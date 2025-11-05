@@ -1,8 +1,19 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Strona główna";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="text-center py-5">
+    <div class="container">
+        <h1 class="display-4 fw-bold text-success mb-3">Witaj w Wóz albo Przewóz!</h1>
+        <p class="lead text-muted mb-4">
+            Dołącz do społeczności kierowców i pasażerów dzielących wspólne przejazdy po Twoim mieście.
+        </p>
+
+        <a class="btn btn-success btn-lg me-2" asp-controller="Rides" asp-action="Index">
+            <i class="bi bi-search"></i> Wyszukaj przejazd
+        </a>
+        <a class="btn btn-outline-success btn-lg" asp-controller="Rides" asp-action="Create">
+            <i class="bi bi-plus-circle"></i> Dodaj trasę
+        </a>
+    </div>
+</section>

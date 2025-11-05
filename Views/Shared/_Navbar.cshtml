@@ -1,0 +1,46 @@
+﻿<nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold d-flex align-items-center" asp-controller="Home" asp-action="Index">
+            <i class="bi bi-car-front-fill me-2"></i>
+            Wóz albo Przewóz
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Strona główna</a></li>
+                <li class="nav-item"><a class="nav-link" asp-controller="Rides" asp-action="Create">Dodaj trasę</a></li>
+                <li class="nav-item"><a class="nav-link" asp-controller="Rides" asp-action="Index">Wyszukaj przejazd</a></li>
+            </ul>
+
+            <ul class="navbar-nav ms-auto align-items-center">
+                @if (User.Identity?.IsAuthenticated ?? false)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link text-white-50" asp-controller="Profile" asp-action="Index">
+                            <i class="bi bi-person-circle me-1"></i> Profil
+                        </a>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Wyloguj</button>
+                        </form>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <a class="btn btn-outline-light btn-sm me-2" asp-controller="Account" asp-action="Login">Zaloguj</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-light btn-sm text-success fw-semibold" asp-controller="Account" asp-action="Register">Rejestracja</a>
+                    </li>
+                }
+            </ul>
+
+        </div>
+    </div>
+</nav>

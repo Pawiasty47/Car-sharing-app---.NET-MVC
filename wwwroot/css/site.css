@@ -1,22 +1,61 @@
-html {
-  font-size: 14px;
-}
-
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
+html, body {
+    height: 100%;
 }
 
 body {
-  margin-bottom: 60px;
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    background: linear-gradient(180deg, #e8f5e9 0%, #f9fbe7 100%);
 }
+
+/* Sekcja hero */
+.hero-section {
+    background: linear-gradient(120deg, #2e7d32, #388e3c, #43a047);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Przyciski */
+.btn-success, .bg-success {
+    background-color: #2e7d32 !important;
+}
+
+.btn-outline-light:hover {
+    background-color: #fff !important;
+    color: #2e7d32 !important;
+}
+
+.btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+
+/* Navbar */
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    transition: color 0.2s ease;
+}
+
+    .navbar-dark .navbar-nav .nav-link:hover {
+        color: #fff;
+    }
+
+/* Stopka */
+.footer {
+    background-color: #e8f5e9;
+    color: #33691e;
+    font-size: 0.9rem;
+    padding: 1rem 0;
+    text-align: center;
+    border-top: 2px solid #a5d6a7;
+}
+
+/* Drobne detale */
+main.container {
+    min-height: 70vh;
+}
+

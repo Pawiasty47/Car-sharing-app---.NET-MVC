@@ -1,0 +1,158 @@
+﻿@model projekt_zespołowy.Models.ViewModels.AddRideViewModel
+@{
+    ViewData["Title"] = "Dodaj przejazd";
+}
+
+@section Head {
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-success">
+                <i class="bi bi-geo-alt-fill me-2"></i>Zaplanuj przejazd
+            </h2>
+            <p class="text-muted">Uzupełnij szczegóły trasy i ustaw cenę za miejsce.</p>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <h4 class="text-success mb-3 border-bottom pb-2">Dane podstawowe</h4>
+
+                    <div class="mb-3">
+                        <label asp-for="SelectedVehicleId" class="form-label fw-semibold">Pojazd</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-truck"></i></span>
+                            <select asp-for="SelectedVehicleId" class="form-select"
+                                    asp-items="@(new SelectList(Model.AvailableVehicles, "Id", "RegistrationNumber", null))">
+                                <option value="" disabled selected>-- Wybierz swój pojazd --</option>
+                            </select>
+                        </div>
+                        <div class="form-text text-muted small">Wyświetlone są tylko Twoje aktywne pojazdy.</div>
+                        <span asp-validation-for="SelectedVehicleId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label asp-for="SeatsOffered" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-people"></i></span>
+                                <input asp-for="SeatsOffered" type="number" class="form-control" min="1" max="8" />
+                            </div>
+                            <div class="form-text text-muted small">Miejsca dostępne dla pasażerów.</div>
+                            <span asp-validation-for="SeatsOffered" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="PricePerSeat" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-currency-złoty"></i></span>
+                                <input asp-for="PricePerSeat" type="number" step="0.01" class="form-control" />
+                            </div>
+                            <span asp-validation-for="PricePerSeat" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+
+                    <h4 class="text-success mb-3 border-bottom pb-2">Trasa i czas</h4>
+
+                    <h5 class="fw-bold mb-3"><i class="bi bi-caret-right-fill me-1"></i>Start</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="StartLocation.Name" class="form-label fw-semibold"></label>
+                            <input asp-for="StartLocation.Name" class="form-control" placeholder="np. Mój dom / Dworzec Główny" />
+                            <span asp-validation-for="StartLocation.Name" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="StartLocation.City" class="form-label fw-semibold"></label>
+                            <input asp-for="StartLocation.City" class="form-control" placeholder="np. Kraków" />
+                            <span asp-validation-for="StartLocation.City" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label asp-for="StartLocation.Address" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-house"></i></span>
+                            <input asp-for="StartLocation.Address" class="form-control" placeholder="np. ul. Długa 12/5" />
+                        </div>
+                        <span asp-validation-for="StartLocation.Address" class="text-danger small"></span>
+                    </div>
+
+                    <h5 class="fw-bold mb-3"><i class="bi bi-caret-right-fill me-1"></i>Cel</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="EndLocation.Name" class="form-label fw-semibold"></label>
+                            <input asp-for="EndLocation.Name" class="form-control" placeholder="np. Uczelnia / Lotnisko Balice" />
+                            <span asp-validation-for="EndLocation.Name" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="EndLocation.City" class="form-label fw-semibold"></label>
+                            <input asp-for="EndLocation.City" class="form-control" placeholder="np. Katowice" />
+                            <span asp-validation-for="EndLocation.City" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label asp-for="EndLocation.Address" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-flag"></i></span>
+                            <input asp-for="EndLocation.Address" class="form-control" placeholder="np. ul. Leśna 3" />
+                        </div>
+                        <span asp-validation-for="EndLocation.Address" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label asp-for="DepartureTime" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-clock"></i></span>
+                                <input asp-for="DepartureTime" type="datetime-local" class="form-control" />
+                            </div>
+                            <span asp-validation-for="DepartureTime" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ArrivalTime" class="form-label fw-semibold"></label>
+                            <input asp-for="ArrivalTime" type="datetime-local" class="form-control" />
+                            <span asp-validation-for="ArrivalTime" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <h4 class="text-success mb-3 border-bottom pb-2">Opcje</h4>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="IsFlexiblePrice" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsFlexiblePrice" class="form-check-label fw-semibold"></label>
+                        <div class="form-text text-muted small">Pozwoli pasażerom zaproponować własną cenę.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Notes" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="np. 'Możliwy odbiór z okolic Rynku', 'Nie jem w aucie'"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger small"></span>
+                    </div>
+
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary me-md-2">Anuluj</a>
+                        <button type="submit" class="btn btn-success px-4 fw-bold">
+                            <i class="bi bi-plus-lg me-1"></i> Opublikuj przejazd
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 text-muted small">
+            <i class="bi bi-info-circle me-1"></i> Przejazd zostanie opublikowany natychmiast po dodaniu. Pasażerowie mogą zacząć rezerwować miejsca.
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

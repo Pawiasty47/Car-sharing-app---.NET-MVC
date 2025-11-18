@@ -1,0 +1,97 @@
+﻿@model projekt_zespołowy.Models.ViewModels.AddVehicleViewModel
+@{
+    ViewData["Title"] = "Dodaj pojazd";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+
+        <!-- Nagłówek sekcji -->
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-success">
+                <i class="bi bi-car-front me-2"></i>Dodaj swój pojazd
+            </h2>
+            <p class="text-muted">Uzupełnij dane samochodu, którym będziesz przewozić pasażerów.</p>
+        </div>
+
+        <!-- Karta z formularzem -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <!-- Wiersz: Marka i Model -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="Make" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-tag"></i></span>
+                                <input asp-for="Make" class="form-control" placeholder="np. Volkswagen" />
+                            </div>
+                            <span asp-validation-for="Make" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Model" class="form-label fw-semibold"></label>
+                            <input asp-for="Model" class="form-control" placeholder="np. Golf" />
+                            <span asp-validation-for="Model" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Wiersz: Rejestracja i Kolor -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="RegistrationNumber" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-postcard"></i></span>
+                                <input asp-for="RegistrationNumber" class="form-control text-uppercase" placeholder="np. KR 12345" />
+                            </div>
+                            <div class="form-text text-muted small">Bez myślników i spacji.</div>
+                            <span asp-validation-for="RegistrationNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Color" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-palette"></i></span>
+                                <input asp-for="Color" class="form-control" placeholder="np. Czarny" />
+                            </div>
+                            <span asp-validation-for="Color" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Liczba miejsc -->
+                    <div class="mb-4">
+                        <label asp-for="SeatsTotal" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-people"></i></span>
+                            <input asp-for="SeatsTotal" type="number" class="form-control" min="2" max="9" />
+                        </div>
+                        <div class="form-text text-muted">
+                            Wliczając Ciebie (kierowcę). Standardowy samochód osobowy ma 5 miejsc.
+                        </div>
+                        <span asp-validation-for="SeatsTotal" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Przyciski akcji -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary me-md-2">Anuluj</a>
+                        <button type="submit" class="btn btn-success px-4 fw-bold">
+                            <i class="bi bi-plus-lg me-1"></i> Dodaj pojazd
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- Informacja dodatkowa -->
+        <div class="text-center mt-4 text-muted small">
+            <i class="bi bi-shield-check me-1"></i> Twój pojazd będzie widoczny dla pasażerów dopiero po dodaniu trasy.
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

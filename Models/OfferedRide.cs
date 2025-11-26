@@ -12,7 +12,7 @@
         public LocationPoint StartLocation { get; set; }
         public Guid EndLocationId { get; set; }
         public LocationPoint EndLocation { get; set; }
-        public ICollection<LocationPoint> Waypoints { get; set; }
+        public ICollection<Waypoint> Waypoints { get; set; }
         public DateTime DepartureTime { get; set; }
         public DateTime? ArrivalTime { get; set; }
         public int SeatsOffered { get; set; }

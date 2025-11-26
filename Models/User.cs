@@ -10,6 +10,6 @@
         public virtual DriverProfile DriverProfile { get; set; }
         public virtual PassengerProfile PassengerProfile { get; set; }
         public virtual ICollection<Review> ReviewsGiven { get; set; }
-        public virtual ICollection<Review> ReviewsRecieved { get; set; }
+        public virtual ICollection<Review> ReviewsReceived { get; set; }
     }
 }

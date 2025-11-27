@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 using projekt_zespołowy.Models.ViewModels;
 
@@ -6,18 +7,24 @@ namespace projekt_zespołowy.Controllers
 {
     public class VehicleController : Controller
     {
-        private static List<Vehicle> _vehicles = new List<Vehicle>(); //pojazdy zapisuje w cachu ale narazie nie wykorzystujemy tego,
-                                                                      //mozna zmienic na zapis do lokalnej bazy
+        private readonly AppDbContext _context;
 
-        public IActionResult Index()
+        public VehicleController(AppDbContext context)
         {
-            return View(_vehicles);
+            _context = context;
         }
 
-        public IActionResult Details(Guid id)
+        public async Task<IActionResult> Index()
         {
-            var v = _vehicles.FirstOrDefault(x => x.Id == id);
+            var vehicles = await _context.Vehicles.ToListAsync();
+            return View(vehicles);
+        }
+
+        public async Task<IActionResult> Details(Guid id)
+        {
+            var v = await _context.Vehicles.FirstOrDefaultAsync(x => x.Id == id);
             if (v == null) return NotFound();
+
             return View(v);
         }
 
@@ -28,32 +35,34 @@ namespace projekt_zespołowy.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Create(AddVehicleViewModel model)
+
+        public async Task<IActionResult> Create(AddVehicleViewModel vehicle)
         {
             if (!ModelState.IsValid)
-                return View(model);
+                return View(vehicle);
 
-            var vehicle = new Vehicle
+            var v = new Vehicle
             {
                 Id = Guid.NewGuid(),
-                Make = model.Make,
-                Model = model.Model,
-                RegistrationNumber = model.RegistrationNumber,
-                SeatsTotal = model.SeatsTotal,
-                SeatsAvailable = model.SeatsTotal,
-                Color = model.Color
+                Make = vehicle.Make,
+                Model = vehicle.Model,
+                RegistrationNumber = vehicle.RegistrationNumber,
+                SeatsTotal = vehicle.SeatsTotal,
+                SeatsAvailable = vehicle.SeatsTotal,
+                Color = vehicle.Color
             };
 
-            _vehicles.Add(vehicle);
+            _context.Vehicles.Add(v);
+            await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Pojazd został dodany!";
             return RedirectToAction("Index");
         }
 
-        [HttpGet]
-        public IActionResult Edit(Guid id)
+
+        public async Task<IActionResult> Edit(Guid id)
         {
-            var v = _vehicles.FirstOrDefault(x => x.Id == id);
+            var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
             var model = new AddVehicleViewModel
@@ -70,12 +79,12 @@ namespace projekt_zespołowy.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(Guid id, AddVehicleViewModel model)
+        public async Task<IActionResult> Edit(Guid id, AddVehicleViewModel model)
         {
             if (!ModelState.IsValid)
                 return View(model);
 
-            var v = _vehicles.FirstOrDefault(x => x.Id == id);
+            var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
             v.Make = model.Make;
@@ -84,13 +93,15 @@ namespace projekt_zespołowy.Controllers
             v.SeatsTotal = model.SeatsTotal;
             v.Color = model.Color;
 
+            await _context.SaveChangesAsync();
+
             TempData["SuccessMessage"] = "Pojazd zaktualizowany!";
             return RedirectToAction("Index");
         }
 
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var v = _vehicles.FirstOrDefault(x => x.Id == id);
+            var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
             return View(v);
@@ -98,12 +109,14 @@ namespace projekt_zespołowy.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteConfirmed(Guid id)
+        public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var v = _vehicles.FirstOrDefault(x => x.Id == id);
+            var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
-            _vehicles.Remove(v);
+            _context.Vehicles.Remove(v);
+            await _context.SaveChangesAsync();
+
             TempData["SuccessMessage"] = "Pojazd usunięty!";
             return RedirectToAction("Index");
         }

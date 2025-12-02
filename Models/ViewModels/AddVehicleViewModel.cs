@@ -4,6 +4,9 @@ namespace projekt_zespołowy.Models.ViewModels
 {
     public class AddVehicleViewModel
     {
+        [Display(Name = "ID Właściciela (Guid)", Prompt = "Wklej ID użytkownika lub zostaw puste")]
+        public Guid? OwnerId { get; set; }
+
         [Required(ErrorMessage = "Proszę podać markę pojazdu.")]
         [Display(Name = "Marka", Prompt = "np. Toyota")]
         public string Make { get; set; }

@@ -14,9 +14,15 @@ namespace projekt_zespołowy.Controllers
             _context = context;
         }
 
+        // --- ZADANIE 1 i 2 ---
+        // 1. Pobierasz listę z bazy (_context.Vehicles...)
+        // 2. Przekazujesz do widoku (return View(vehicles))
         public async Task<IActionResult> Index()
         {
-            var vehicles = await _context.Vehicles.ToListAsync();
+            var vehicles = await _context.Vehicles
+                .Include(v => v.Owner) // Dociągamy właściciela, żeby mieć komplet danych
+                .ToListAsync();
+
             return View(vehicles);
         }
 
@@ -35,7 +41,6 @@ namespace projekt_zespołowy.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-
         public async Task<IActionResult> Create(AddVehicleViewModel vehicle)
         {
             if (!ModelState.IsValid)
@@ -48,8 +53,9 @@ namespace projekt_zespołowy.Controllers
                 Model = vehicle.Model,
                 RegistrationNumber = vehicle.RegistrationNumber,
                 SeatsTotal = vehicle.SeatsTotal,
-                SeatsAvailable = vehicle.SeatsTotal,
-                Color = vehicle.Color
+                SeatsAvailable = vehicle.SeatsTotal - 1, // Zakładamy, że kierowca zajmuje jedno miejsce
+                Color = vehicle.Color,
+                OwnerId = vehicle.OwnerId // <--- TUTAJ JEST KLUCZOWA ZMIANA
             };
 
             _context.Vehicles.Add(v);
@@ -58,7 +64,6 @@ namespace projekt_zespołowy.Controllers
             TempData["SuccessMessage"] = "Pojazd został dodany!";
             return RedirectToAction("Index");
         }
-
 
         public async Task<IActionResult> Edit(Guid id)
         {
@@ -71,7 +76,8 @@ namespace projekt_zespołowy.Controllers
                 Model = v.Model,
                 RegistrationNumber = v.RegistrationNumber,
                 SeatsTotal = v.SeatsTotal,
-                Color = v.Color
+                Color = v.Color,
+                OwnerId = v.OwnerId // Wczytujemy istniejącego właściciela do formularza
             };
 
             return View(model);
@@ -92,6 +98,7 @@ namespace projekt_zespołowy.Controllers
             v.RegistrationNumber = model.RegistrationNumber;
             v.SeatsTotal = model.SeatsTotal;
             v.Color = model.Color;
+            // v.OwnerId = model.OwnerId; // Opcjonalnie: odkomentuj, jeśli chcesz pozwalać na zmianę ID właściciela przy edycji
 
             await _context.SaveChangesAsync();
 

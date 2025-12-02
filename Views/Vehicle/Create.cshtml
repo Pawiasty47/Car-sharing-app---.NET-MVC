@@ -6,7 +6,6 @@
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
 
-        <!-- Nagłówek sekcji -->
         <div class="text-center mb-4">
             <h2 class="fw-bold text-success">
                 <i class="bi bi-car-front me-2"></i>Dodaj swój pojazd
@@ -14,13 +13,11 @@
             <p class="text-muted">Uzupełnij dane samochodu, którym będziesz przewozić pasażerów.</p>
         </div>
 
-        <!-- Karta z formularzem -->
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <form asp-action="Create" method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                    <!-- --- BRAKUJĄCE POLE: ID WŁAŚCICIELA --- -->
                     <div class="mb-4 bg-light p-3 rounded border">
                         <label asp-for="OwnerId" class="form-label fw-bold text-success"></label>
                         <input asp-for="OwnerId" class="form-control font-monospace" placeholder="Wklej ID (Guid) lub zostaw puste" />
@@ -29,11 +26,9 @@
                         </div>
                         <span asp-validation-for="OwnerId" class="text-danger small"></span>
                     </div>
-                    <!-- --------------------------------------- -->
 
                     <hr class="text-muted" />
 
-                    <!-- Wiersz: Marka i Model -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label asp-for="Make" class="form-label fw-semibold"></label>
@@ -50,7 +45,6 @@
                         </div>
                     </div>
 
-                    <!-- Wiersz: Rejestracja i Kolor -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label asp-for="RegistrationNumber" class="form-label fw-semibold"></label>
@@ -71,7 +65,6 @@
                         </div>
                     </div>
 
-                    <!-- Liczba miejsc -->
                     <div class="mb-4">
                         <label asp-for="SeatsTotal" class="form-label fw-semibold"></label>
                         <div class="input-group">
@@ -84,7 +77,6 @@
                         <span asp-validation-for="SeatsTotal" class="text-danger small"></span>
                     </div>
 
-                    <!-- Przyciski akcji -->
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                         <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary me-md-2">Anuluj</a>
                         <button type="submit" class="btn btn-success px-4 fw-bold">
@@ -96,7 +88,6 @@
             </div>
         </div>
 
-        <!-- Informacja dodatkowa -->
         <div class="text-center mt-4 text-muted small">
             <i class="bi bi-shield-check me-1"></i> Twój pojazd będzie widoczny dla pasażerów dopiero po dodaniu trasy.
         </div>

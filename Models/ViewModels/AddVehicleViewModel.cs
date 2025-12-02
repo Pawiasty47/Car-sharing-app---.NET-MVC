@@ -24,7 +24,7 @@ namespace projekt_zespołowy.Models.ViewModels
         [Required(ErrorMessage = "Określ całkowitą liczbę miejsc.")]
         [Range(2, 9, ErrorMessage = "Liczba miejsc musi wynosić od 2 do 9.")]
         [Display(Name = "Liczba miejsc (razem z kierowcą)")]
-        public int SeatsTotal { get; set; } = 5; // Domyślna wartość
+        public int SeatsTotal { get; set; } = 5;
 
         [Required(ErrorMessage = "Kolor pojazdu jest wymagany.")]
         [Display(Name = "Kolor", Prompt = "np. Srebrny metalik")]

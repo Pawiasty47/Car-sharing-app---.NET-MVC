@@ -14,13 +14,10 @@ namespace projekt_zespołowy.Controllers
             _context = context;
         }
 
-        // --- ZADANIE 1 i 2 ---
-        // 1. Pobierasz listę z bazy (_context.Vehicles...)
-        // 2. Przekazujesz do widoku (return View(vehicles))
         public async Task<IActionResult> Index()
         {
             var vehicles = await _context.Vehicles
-                .Include(v => v.Owner) // Dociągamy właściciela, żeby mieć komplet danych
+                .Include(v => v.Owner) 
                 .ToListAsync();
 
             return View(vehicles);
@@ -53,9 +50,9 @@ namespace projekt_zespołowy.Controllers
                 Model = vehicle.Model,
                 RegistrationNumber = vehicle.RegistrationNumber,
                 SeatsTotal = vehicle.SeatsTotal,
-                SeatsAvailable = vehicle.SeatsTotal - 1, // Zakładamy, że kierowca zajmuje jedno miejsce
+                SeatsAvailable = vehicle.SeatsTotal - 1, 
                 Color = vehicle.Color,
-                OwnerId = vehicle.OwnerId // <--- TUTAJ JEST KLUCZOWA ZMIANA
+                OwnerId = vehicle.OwnerId
             };
 
             _context.Vehicles.Add(v);
@@ -77,7 +74,7 @@ namespace projekt_zespołowy.Controllers
                 RegistrationNumber = v.RegistrationNumber,
                 SeatsTotal = v.SeatsTotal,
                 Color = v.Color,
-                OwnerId = v.OwnerId // Wczytujemy istniejącego właściciela do formularza
+                OwnerId = v.OwnerId
             };
 
             return View(model);
@@ -98,7 +95,7 @@ namespace projekt_zespołowy.Controllers
             v.RegistrationNumber = model.RegistrationNumber;
             v.SeatsTotal = model.SeatsTotal;
             v.Color = model.Color;
-            // v.OwnerId = model.OwnerId; // Opcjonalnie: odkomentuj, jeśli chcesz pozwalać na zmianę ID właściciela przy edycji
+           
 
             await _context.SaveChangesAsync();
 

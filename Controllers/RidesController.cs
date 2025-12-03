@@ -291,18 +291,21 @@ namespace projekt_zespołowy.Controllers
         }
 
         // 7. USUWANIE (Pytanie)
+        // GET: Rides/Delete/5
         public async Task<IActionResult> Delete(Guid id)
         {
             var ride = await _context.OfferedRides
+                .Include(r => r.Vehicle)
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (ride == null) return NotFound();
+
             return View(ride);
         }
 
-        // 8. USUWANIE (Potwierdzenie)
+        // POST: Rides/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
@@ -313,8 +316,10 @@ namespace projekt_zespołowy.Controllers
             _context.OfferedRides.Remove(ride);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Przejazd usunięty!";
+            TempData["SuccessMessage"] = "Przejazd został usunięty!";
             return RedirectToAction(nameof(Index));
         }
+
+
     }
 }

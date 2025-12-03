@@ -115,14 +115,20 @@ namespace projekt_zespołowy.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var v = await _context.Vehicles.FindAsync(id);
-            if (v == null) return NotFound();
+            var vehicle = await _context.Vehicles.FindAsync(id);
+            if (vehicle == null) return NotFound();
 
-            _context.Vehicles.Remove(v);
+            var rides = _context.OfferedRides.Where(r => r.VehicleId == id);
+            _context.OfferedRides.RemoveRange(rides);
+
+            _context.Vehicles.Remove(vehicle);
+
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Pojazd usunięty!";
-            return RedirectToAction("Index");
+            TempData["SuccessMessage"] = "Pojazd oraz powiązane przejazdy zostały usunięte!";
+            return RedirectToAction(nameof(Index));
         }
+
+
     }
 }

@@ -1,0 +1,25 @@
+﻿@model projekt_zespołowy.Models.OfferedRide
+
+@{
+    ViewData["Title"] = "Usuń przejazd";
+}
+
+<h2>Usuń przejazd</h2>
+
+<div class="alert alert-warning">
+    <strong>Uwaga!</strong> Czy na pewno chcesz usunąć ten przejazd?
+</div>
+
+<div class="mb-3">
+    <p><strong>Pojazd:</strong> @Model.Vehicle.Make @Model.Vehicle.Model (@Model.Vehicle.RegistrationNumber)</p>
+    <p><strong>Wyjazd:</strong> @Model.StartLocation.City - @Model.EndLocation.City</p>
+    <p><strong>Data wyjazdu:</strong> @Model.DepartureTime.ToString("g")</p>
+</div>
+
+<form asp-action="Delete" method="post" id="deleteForm">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger" onclick="return confirm('Czy na pewno chcesz usunąć ten przejazd?');">
+        Usuń
+    </button>
+    <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+</form>

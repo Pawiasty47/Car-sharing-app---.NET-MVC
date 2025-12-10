@@ -12,19 +12,70 @@
             </h2>
             <p class="text-muted">Przeglądaj oferty przejazdów z bazy danych.</p>
         </div>
-        
+
         <a asp-action="Create" class="btn btn-success btn-lg shadow-sm">
             <i class="bi bi-plus-circle me-2"></i>Dodaj nowy przejazd
         </a>
     </div>
 
+    <div class="card bg-light border-0 shadow-sm mb-5">
+        <div class="card-body p-4">
+            <form asp-action="Index" method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Skąd</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-geo-alt"></i></span>
+                            <input type="text" name="searchFrom" class="form-control"
+                                   placeholder="Miasto startu..." value="@ViewData["CurrentFilterFrom"]" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Dokąd</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-geo-alt-fill"></i></span>
+                            <input type="text" name="searchTo" class="form-control"
+                                   placeholder="Miasto docelowe..." value="@ViewData["CurrentFilterTo"]" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Data</label>
+                        <input type="date" name="searchDate" class="form-control"
+                               value="@ViewData["CurrentFilterDate"]" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-2"></i>Szukaj
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                                Wyczyść filtry
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @if (!Model.Any())
     {
         <div class="alert alert-warning text-center p-5 rounded-3 shadow-sm" role="alert">
-            <h4 class="alert-heading"><i class="bi bi-emoji-frown me-2"></i>Brak ofert</h4>
-            <p>W bazie danych nie ma jeszcze żadnych przejazdów.</p>
-            <hr>
-            <p class="mb-0">Kliknij przycisk <strong>Dodaj nowy przejazd</strong>, aby stworzyć pierwszy rekord.</p>
+            <h4 class="alert-heading"><i class="bi bi-emoji-frown me-2"></i>Brak tras</h4>
+            @if (ViewData["CurrentFilterFrom"] != null || ViewData["CurrentFilterTo"] != null || ViewData["CurrentFilterDate"] != null)
+            {
+                <p>Niestety, nie znaleziono przejazdów spełniających Twoje kryteria wyszukiwania.</p>
+                <a asp-action="Index" class="btn btn-outline-dark mt-2">Pokaż wszystkie trasy</a>
+            }
+            else
+            {
+                <p>W bazie danych nie ma jeszcze żadnych przejazdów.</p>
+                <hr>
+                <p class="mb-0">Kliknij przycisk <strong>Dodaj nowy przejazd</strong>, aby stworzyć pierwszy rekord.</p>
+            }
         </div>
     }
     else
@@ -56,7 +107,7 @@
                                     <i class="bi bi-arrow-right-circle-fill position-absolute top-0 start-50 translate-middle mt-0 bg-white text-secondary"></i>
                                 </div>
                                 <div class="text-center ms-3">
-                                    @if(item.ArrivalTime.HasValue)
+                                    @if (item.ArrivalTime.HasValue)
                                     {
                                         <div class="fw-bold fs-5">@item.ArrivalTime.Value.ToString("HH:mm")</div>
                                     }
@@ -78,7 +129,7 @@
                                 <i class="bi bi-car-front-fill me-2 text-primary"></i>
                                 <strong>Pojazd:</strong> @item.Vehicle?.Make @item.Vehicle?.Model
                             </p>
-                            
+
                             <p class="card-text small text-muted">
                                 <i class="bi bi-people-fill me-2 text-primary"></i>
                                 <strong>Miejsca:</strong> @(item.SeatsOffered - item.SeatsTaken) wolnych (z @item.SeatsOffered)
@@ -109,7 +160,8 @@
     .hover-effect {
         transition: transform 0.2s ease-in-out;
     }
-    .hover-effect:hover {
-        transform: translateY(-5px);
-    }
+
+        .hover-effect:hover {
+            transform: translateY(-5px);
+        }
 </style>

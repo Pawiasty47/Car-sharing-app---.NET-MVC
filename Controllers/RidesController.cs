@@ -14,15 +14,37 @@ namespace projekt_zespołowy.Controllers
             _context = context;
         }
 
-        // 1. LISTA PRZEJAZDÓW
-        public async Task<IActionResult> Index()
+        // 1. LISTA PRZEJAZDÓW (Z wyszukiwaniem)
+        public async Task<IActionResult> Index(string searchFrom, string searchTo, DateTime? searchDate)
         {
-            var rides = await _context.OfferedRides
-                .Include(r => r.Vehicle)        
-                .Include(r => r.StartLocation) 
-                .Include(r => r.EndLocation)    
-                .OrderByDescending(r => r.DepartureTime) 
+            var query = _context.OfferedRides
+                .Include(r => r.Vehicle)
+                .Include(r => r.StartLocation)
+                .Include(r => r.EndLocation)
+                .AsQueryable(); 
+
+            if (!string.IsNullOrEmpty(searchFrom))
+            {
+                query = query.Where(r => r.StartLocation.City.Contains(searchFrom) || r.StartLocation.Name.Contains(searchFrom));
+            }
+
+            if (!string.IsNullOrEmpty(searchTo))
+            {
+                query = query.Where(r => r.EndLocation.City.Contains(searchTo) || r.EndLocation.Name.Contains(searchTo));
+            }
+
+            if (searchDate.HasValue)
+            {
+                query = query.Where(r => r.DepartureTime.Date == searchDate.Value.Date);
+            }
+
+            var rides = await query
+                .OrderByDescending(r => r.DepartureTime)
                 .ToListAsync();
+
+            ViewData["CurrentFilterFrom"] = searchFrom;
+            ViewData["CurrentFilterTo"] = searchTo;
+            ViewData["CurrentFilterDate"] = searchDate?.ToString("yyyy-MM-dd");
 
             return View(rides);
         }

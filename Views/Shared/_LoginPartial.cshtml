@@ -1,0 +1,16 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using projekt_zespołowy.Models
+@inject SignInManager<User> SignInManager
+@inject UserManager<User> UserManager
+
+<li class="nav-item">
+    <a class="nav-link text-white-50" asp-controller="Account" asp-action="Login">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Logowanie
+    </a>
+</li>
+
+<li class="nav-item ms-2">
+    <a class="btn btn-outline-light btn-sm" asp-controller="Account" asp-action="Register">
+        Rejestracja
+    </a>
+</li>

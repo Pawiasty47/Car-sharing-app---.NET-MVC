@@ -1,0 +1,60 @@
+﻿@model LoginVM
+@{
+    ViewData["Title"] = "Logowanie";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">
+                    <i class="bi bi-door-open-fill me-2"></i>Zaloguj się
+                </h3>
+            </div>
+
+            <div class="card-body p-4">
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger">
+                        <strong>Ups! Coś poszło nie tak:</strong>
+                        <div asp-validation-summary="All" class="mb-0"></div>
+                    </div>
+                }
+
+                <form asp-action="Login" method="post">
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label fw-bold">Email</label>
+                        <input asp-for="Email" class="form-control" placeholder="np. osoba@example.com" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label fw-bold">Hasło</label>
+                        <input asp-for="Password" class="form-control" type="password" placeholder="Wpisz hasło" />
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Zaloguj się
+                        </button>
+
+                        <a asp-controller="Account" asp-action="Register" class="btn btn-outline-secondary">
+                            Nie masz konta? Zarejestruj się
+                        </a>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,12 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
-using System.Reflection.Emit;
+using Microsoft.AspNetCore.Identity;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options)
+    {
+    }
 
-    public DbSet<User> Users { get; set; }
     public DbSet<DriverProfile> DriverProfiles { get; set; }
     public DbSet<PassengerProfile> PassengerProfiles { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
@@ -17,9 +20,12 @@ public class AppDbContext : DbContext
     public DbSet<Review> Reviews { get; set; }
     public DbSet<CityIncentive> CityIncentives { get; set; }
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<Waypoint> Waypoints { get; set; }
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        base.OnModelCreating(model);
+
         model.Entity<User>()
             .HasOne(u => u.DriverProfile)
             .WithOne(dp => dp.User)
@@ -119,5 +125,6 @@ public class AppDbContext : DbContext
             .HasOne(w => w.Location)
             .WithMany(lp => lp.Waypoints)
             .HasForeignKey(w => w.LocationPointId);
+
     }
 }

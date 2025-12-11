@@ -1,12 +1,14 @@
-﻿namespace projekt_zespołowy.Models
+﻿using Microsoft.AspNetCore.Identity;
+using System;
+using System.Collections.Generic;
+
+namespace projekt_zespołowy.Models
 {
-    public class User
+    public class User : IdentityUser<Guid>
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string Email { get; set; }
-        public string PhoneNumber { get; set; }
+
         public virtual DriverProfile DriverProfile { get; set; }
         public virtual PassengerProfile PassengerProfile { get; set; }
         public virtual ICollection<Review> ReviewsGiven { get; set; }

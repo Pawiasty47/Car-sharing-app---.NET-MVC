@@ -1,0 +1,87 @@
+﻿@model projekt_zespołowy.Models.ViewModels.PassengerProfileViewModel
+
+@{
+    ViewData["Title"] = "Edycja Profilu";
+}
+
+<div class="container mt-4">
+    <h2>Edycja Profilu</h2>
+    <hr />
+
+    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+
+        <div class="mb-4 text-center">
+            @if (Model.ExistingProfilePicture != null)
+            {
+                <img src="data:image/*;base64,@(Convert.ToBase64String(Model.ExistingProfilePicture))"
+                     class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #198754;" />
+            }
+            else
+            {
+                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3"
+                     style="width: 150px; height: 150px; font-size: 50px;">
+                    👤
+                </div>
+            }
+            <div class="mb-3">
+                <label class="form-label">Zmień zdjęcie</label>
+                <input asp-for="ProfilePictureFile" class="form-control" type="file" accept=".png,.jpg,.jpeg" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label asp-for="FirstName" class="form-label"></label>
+                <input asp-for="FirstName" class="form-control" />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="LastName" class="form-label"></label>
+                <input asp-for="LastName" class="form-control" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="PhoneNumber" class="form-label"></label>
+                <input asp-for="PhoneNumber" class="form-control" />
+            </div>
+        </div>
+
+        <div class="card p-3 bg-light mt-4">
+            <h5 class="mb-3">Moje preferencje w podróży</h5>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" asp-for="PrefersMusic" />
+                <label class="form-check-label" asp-for="PrefersMusic">Lubię słuchać muzyki (zaznacz) / Nie lubię głośnej muzyki (odznacz)</label>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" asp-for="AcceptsPets" />
+                <label class="form-check-label" asp-for="AcceptsPets">Akceptuję zwierzęta (zaznacz) / Nie akceptuję zwierząt (odznacz)</label>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" asp-for="AcceptsEating" />
+                <label class="form-check-label" asp-for="AcceptsEating">Nie przeszkadza mi jedzenie w aucie (zaznacz) / Nie toleruję jedzenia (odznacz)</label>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" asp-for="PrefersQuietRide" />
+                <label class="form-check-label" asp-for="PrefersQuietRide">Preferuję ciszę (zaznacz) / Chętnie porozmawiam (odznacz)</label>
+            </div>
+
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" asp-for="PrefersNonSmoking" />
+                <label class="form-check-label" asp-for="PrefersNonSmoking">Nie toleruję palenia (zaznacz) / Palę (odznacz)</label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-lg mt-4 w-100">Zapisz zmiany</button>
+    </form>
+</div>

@@ -1,0 +1,68 @@
+﻿@model projekt_zespołowy.Models.ViewModels.PassengerProfileViewModel
+
+@{
+    ViewData["Title"] = "Mój Profil";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-success text-white text-center py-4">
+            <h2 class="mb-0">Mój Profil</h2>
+        </div>
+        <div class="card-body p-5">
+
+            <div class="row align-items-center mb-5">
+                <div class="col-md-4 text-center">
+                    @if (Model.ExistingProfilePicture != null)
+                    {
+                        <img src="data:image/*;base64,@(Convert.ToBase64String(Model.ExistingProfilePicture))"
+                             class="rounded-circle shadow" style="width: 180px; height: 180px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto shadow"
+                             style="width: 180px; height: 180px; font-size: 80px;">
+                        </div>
+                    }
+                </div>
+
+                <div class="col-md-8">
+                    <h2 class="fw-bold">@Model.FirstName @Model.LastName</h2>
+                    <p class="text-muted fs-5">@Model.Email</p>
+                    <p class="fs-5">@(Model.PhoneNumber ?? "Brak telefonu")</p>
+                </div>
+            </div>
+
+            <hr />
+
+            <h4 class="mb-4 text-secondary">Preferencje</h4>
+            <div class="d-flex flex-wrap gap-3">
+                <span class="badge rounded-pill p-3 @(Model.PrefersMusic ? "bg-success" : "bg-light text-secondary border")">
+                    @(Model.PrefersMusic ? "Lubię muzykę" : "Bez głośnej muzyki")
+                </span>
+
+                <span class="badge rounded-pill p-3 @(Model.AcceptsPets ? "bg-success" : "bg-light text-secondary border")">
+                    @(Model.AcceptsPets ? "Akceptuję zwierzęta" : "Nie akceptuję zwierząt")
+                </span>
+
+                <span class="badge rounded-pill p-3 @(Model.AcceptsEating ? "bg-success" : "bg-light text-secondary border")">
+                    @(Model.AcceptsEating ? "Nie przeszkadza mi jedzenie" : "Nie toleruję jedzenia")
+                </span>
+
+                <span class="badge rounded-pill p-3 @(Model.PrefersQuietRide ? "bg-success" : "bg-light text-secondary border")">
+                    @(Model.PrefersQuietRide ? "Chętnie porozmawiam" : "Preferuję ciszę")
+                </span>
+
+                <span class="badge rounded-pill p-3 @(Model.PrefersNonSmoking ? "bg-success" : "bg-light text-secondary border")">
+                    @(Model.PrefersNonSmoking ? "Palący" : "Nie toleruję palenia")
+                </span>
+
+            </div>
+
+            <div class="mt-5 text-end">
+                <a asp-action="Edit" class="btn btn-outline-success btn-lg">✏️ Edytuj profil</a>
+            </div>
+
+        </div>
+    </div>
+</div>

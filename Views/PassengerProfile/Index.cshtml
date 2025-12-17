@@ -60,9 +60,27 @@
             </div>
 
             <div class="mt-5 text-end">
-                <a asp-action="Edit" class="btn btn-outline-success btn-lg">✏️ Edytuj profil</a>
-            </div>
+                <a asp-action="Edit" class="btn btn-outline-success btn-lg me-2">
+                    ✏️ Edytuj profil
+                </a>
 
+                @if (!Model.IsDriver)
+                {
+                    <a asp-controller="DriverProfile"
+                       asp-action="BecomeDriver"
+                       class="btn btn-warning btn-lg">
+                        🚗 Zostań kierowcą
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="DriverProfile"
+                       asp-action="Index"
+                       class="btn btn-outline-primary btn-lg">
+                        🚘 Profil kierowcy
+                    </a>
+                }
+            </div>
         </div>
     </div>
 </div>

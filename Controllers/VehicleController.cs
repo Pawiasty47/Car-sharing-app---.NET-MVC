@@ -1,26 +1,46 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 using projekt_zespołowy.Models.ViewModels;
 
 namespace projekt_zespołowy.Controllers
 {
+    [Authorize] // Wymagamy logowania, jeśli chcesz zabezpieczyć samochody
     public class VehicleController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public VehicleController(AppDbContext context)
+        public VehicleController(AppDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
+        // Wyświetla wszystkie samochody
         public async Task<IActionResult> Index()
         {
             var vehicles = await _context.Vehicles
-                .Include(v => v.Owner) 
+                .Include(v => v.Owner)
                 .ToListAsync();
 
             return View(vehicles);
+        }
+
+        // Wyświetla tylko samochody zalogowanego użytkownika
+        public async Task<IActionResult> MyVehicles()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Unauthorized();
+
+            var vehicles = await _context.Vehicles
+                .Where(v => v.OwnerId == user.Id)
+                .ToListAsync();
+
+            return View("Index", vehicles); // Korzystamy z tego samego widoku co Index
         }
 
         public async Task<IActionResult> Details(Guid id)
@@ -43,6 +63,21 @@ namespace projekt_zespołowy.Controllers
             if (!ModelState.IsValid)
                 return View(vehicle);
 
+            // Pobranie zalogowanego użytkownika
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            // Wybór OwnerId: ręcznie podany lub domyślnie zalogowany użytkownik
+            Guid ownerId;
+            if (!vehicle.OwnerId.HasValue || vehicle.OwnerId.Value == Guid.Empty)
+            {
+                ownerId = user.Id;
+            }
+            else
+            {
+                ownerId = vehicle.OwnerId.Value;
+            }
+
             var v = new Vehicle
             {
                 Id = Guid.NewGuid(),
@@ -50,9 +85,9 @@ namespace projekt_zespołowy.Controllers
                 Model = vehicle.Model,
                 RegistrationNumber = vehicle.RegistrationNumber,
                 SeatsTotal = vehicle.SeatsTotal,
-                SeatsAvailable = vehicle.SeatsTotal - 1, 
+                SeatsAvailable = vehicle.SeatsTotal - 1,
                 Color = vehicle.Color,
-                OwnerId = vehicle.OwnerId
+                OwnerId = ownerId
             };
 
             _context.Vehicles.Add(v);
@@ -61,6 +96,7 @@ namespace projekt_zespołowy.Controllers
             TempData["SuccessMessage"] = "Pojazd został dodany!";
             return RedirectToAction("Index");
         }
+
 
         public async Task<IActionResult> Edit(Guid id)
         {
@@ -95,7 +131,6 @@ namespace projekt_zespołowy.Controllers
             v.RegistrationNumber = model.RegistrationNumber;
             v.SeatsTotal = model.SeatsTotal;
             v.Color = model.Color;
-           
 
             await _context.SaveChangesAsync();
 
@@ -128,7 +163,5 @@ namespace projekt_zespołowy.Controllers
             TempData["SuccessMessage"] = "Pojazd oraz powiązane przejazdy zostały usunięte!";
             return RedirectToAction(nameof(Index));
         }
-
-
     }
 }

@@ -1,44 +1,60 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 
 namespace projekt_zespołowy.Controllers
 {
-    public class DriverProfileController : Controller //crud profil kierowcy
+    [Authorize]
+    public class DriverProfileController : Controller
     {
-        private static List<DriverProfile> _drivers = new List<DriverProfile>();
+        private readonly AppDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public IActionResult Index()
+        public DriverProfileController(AppDbContext context, UserManager<User> userManager)
         {
-            return View(_drivers);
+            _context = context;
+            _userManager = userManager;
         }
 
-        public IActionResult Details(Guid id)
+        // 🚗 ZOSTAŃ KIEROWCĄ
+        [HttpGet]
+        public async Task<IActionResult> BecomeDriver()
         {
-            var dp = _drivers.FirstOrDefault(x => x.UserId == id);
-            if (dp == null) return NotFound();
-            return View(dp);
-        }
+            var user = await _userManager.GetUserAsync(User);
 
-        public IActionResult Edit(Guid id)
-        {
-            var dp = _drivers.FirstOrDefault(x => x.UserId == id);
-            if (dp == null) return NotFound();
-            return View(dp);
-        }
+            var exists = await _context.DriverProfiles
+                .AnyAsync(d => d.UserId == user.Id);
 
-        [HttpPost]
-        public IActionResult Edit(Guid id, DriverProfile model)
-        {
-            var dp = _drivers.FirstOrDefault(x => x.UserId == id);
-            if (dp == null) return NotFound();
+            if (!exists)
+            {
+                var driver = new DriverProfile
+                {
+                    UserId = user.Id,
+                    IsVerified = false,
+                    Rating = 0,
+                    CompletedRidesCount = 0
+                };
 
-            dp.IsVerified = model.IsVerified;
-            dp.DrivingLicenseImageUrl = model.DrivingLicenseImageUrl;
-            dp.CompletedRidesCount = model.CompletedRidesCount;
-            dp.Rating = model.Rating;
+                _context.DriverProfiles.Add(driver);
+                await _context.SaveChangesAsync();
+            }
 
-            TempData["SuccessMessage"] = "Profil kierowcy zapisany!";
             return RedirectToAction("Index");
+        }
+
+        public async Task<IActionResult> Index()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var profile = await _context.DriverProfiles
+                .FirstOrDefaultAsync(d => d.UserId == user.Id);
+
+            if (profile == null)
+                return RedirectToAction("BecomeDriver");
+
+            return View(profile);
         }
     }
 }

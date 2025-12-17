@@ -26,7 +26,11 @@ namespace projekt_zespołowy.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound("Błąd: Nie jesteś zalogowana.");
 
-            var profile = await _context.PassengerProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
+            var profile = await _context.PassengerProfiles
+                .FirstOrDefaultAsync(p => p.UserId == user.Id);
+
+            var isDriver = await _context.DriverProfiles
+                .AnyAsync(d => d.UserId == user.Id);
 
             if (profile == null)
             {
@@ -48,7 +52,9 @@ namespace projekt_zespołowy.Controllers
                 PrefersQuietRide = profile.PrefersQuietRide,
                 PrefersMusic = profile.PrefersMusic,
                 AcceptsPets = profile.AcceptsPets,
-                AcceptsEating = profile.AcceptsEating
+                AcceptsEating = profile.AcceptsEating,
+
+                IsDriver = isDriver
             };
 
             return View(model);

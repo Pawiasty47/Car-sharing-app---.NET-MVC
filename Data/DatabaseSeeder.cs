@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 
@@ -9,36 +10,50 @@ namespace projekt_zespołowy
 {
     public static class DatabaseSeeder
     {
-        public static async Task SeedAsync(AppDbContext db)
+        public static async Task SeedAsync(AppDbContext db, IServiceProvider services)
         {
             var random = new Random();
 
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+            var userManager = services.GetRequiredService<UserManager<User>>();
 
-            // 1. Użytkownicy
+            string[] roles = { "Passenger", "Driver" };
 
-            if (!await db.Users.AnyAsync())
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                }
+            }
+
+
+            if (!await userManager.Users.AnyAsync())
             {
                 var users = new List<User>
                 {
-                    new User { Id = Guid.NewGuid(), FirstName = "Jan", LastName = "Nowak", Email = "jan.nowak@test.pl", PhoneNumber = "500100200" },
-                    new User { Id = Guid.NewGuid(), FirstName = "Anna", LastName = "Kowalska", Email = "anna.kowalska@test.pl", PhoneNumber = "500100201" },
-                    new User { Id = Guid.NewGuid(), FirstName = "Piotr", LastName = "Wiśniewski", Email = "piotr.wisniewski@test.pl", PhoneNumber = "500100202" },
-                    new User { Id = Guid.NewGuid(), FirstName = "Katarzyna", LastName = "Lewandowska", Email = "katarzyna.lew@test.pl", PhoneNumber = "500100203" },
-                    new User { Id = Guid.NewGuid(), FirstName = "Marek", LastName = "Zieliński", Email = "marek.zielinski@test.pl", PhoneNumber = "500100204" }
+                    new User { UserName = "jan.nowak@test.pl", Email = "jan.nowak@test.pl", FirstName = "Jan", LastName = "Nowak", PhoneNumber = "500100200" },
+                    new User { UserName = "anna.kowalska@test.pl", Email = "anna.kowalska@test.pl", FirstName = "Anna", LastName = "Kowalska", PhoneNumber = "500100201" },
+                    new User { UserName = "piotr.wisniewski@test.pl", Email = "piotr.wisniewski@test.pl", FirstName = "Piotr", LastName = "Wiśniewski", PhoneNumber = "500100202" },
+                    new User { UserName = "katarzyna.lew@test.pl", Email = "katarzyna.lew@test.pl", FirstName = "Katarzyna", LastName = "Lewandowska", PhoneNumber = "500100203" },
+                    new User { UserName = "marek.zielinski@test.pl", Email = "marek.zielinski@test.pl", FirstName = "Marek", LastName = "Zieliński", PhoneNumber = "500100204" }
                 };
 
-                db.Users.AddRange(users);
-                await db.SaveChangesAsync();
+                foreach (var user in users)
+                {
+                    await userManager.CreateAsync(user, "Test123!");
+                    await userManager.AddToRoleAsync(user, "Passenger");
+                }
             }
 
             var allUsers = await db.Users.ToListAsync();
 
 
-            // 2. DriverProfiles
+            var testDrivers = await userManager.Users.Take(2).ToListAsync();
 
-            foreach (var user in allUsers)
+            foreach (var user in testDrivers)
             {
-                if (!await db.DriverProfiles.AnyAsync(dp => dp.UserId == user.Id))
+                if (!await db.DriverProfiles.AnyAsync(d => d.UserId == user.Id))
                 {
                     db.DriverProfiles.Add(new DriverProfile
                     {
@@ -47,13 +62,15 @@ namespace projekt_zespołowy
                         CompletedRidesCount = 0,
                         Rating = 0
                     });
+
+                    await userManager.AddToRoleAsync(user, "Driver");
                 }
             }
+
             await db.SaveChangesAsync();
 
             var allDriverProfiles = await db.DriverProfiles.ToListAsync();
 
-            // 3. Vehicles
 
             if (!await db.Vehicles.AnyAsync())
             {
@@ -72,8 +89,6 @@ namespace projekt_zespołowy
 
             var allVehicles = await db.Vehicles.ToListAsync();
 
-
-            // 4. LocationPoints 
 
             var locations = await db.LocationPoints.ToListAsync();
             if (!locations.Any())
@@ -108,7 +123,6 @@ namespace projekt_zespołowy
 
             locations = await db.LocationPoints.ToListAsync();
 
-            // 5. OfferedRides
 
             if (!await db.OfferedRides.AnyAsync())
             {

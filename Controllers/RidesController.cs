@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 using projekt_zespołowy.Models.ViewModels;
@@ -8,10 +10,12 @@ namespace projekt_zespołowy.Controllers
     public class RidesController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public RidesController(AppDbContext context)
+        public RidesController(AppDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // 1. LISTA PRZEJAZDÓW (Z wyszukiwaniem)
@@ -19,9 +23,11 @@ namespace projekt_zespołowy.Controllers
         {
             var query = _context.OfferedRides
                 .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                    .ThenInclude(d => d.User)
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
-                .AsQueryable(); 
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(searchFrom))
             {
@@ -46,7 +52,30 @@ namespace projekt_zespołowy.Controllers
             ViewData["CurrentFilterTo"] = searchTo;
             ViewData["CurrentFilterDate"] = searchDate?.ToString("yyyy-MM-dd");
 
+            ViewBag.IsMyRidesMode = false;
+
             return View(rides);
+        }
+
+        // 1a. MOJE PRZEJAZDY
+        [Authorize]
+        public async Task<IActionResult> MyRides()
+        {
+            var userId = _userManager.GetUserId(User);
+
+            var myRides = await _context.OfferedRides
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                    .ThenInclude(d => d.User)
+                .Include(r => r.StartLocation)
+                .Include(r => r.EndLocation)
+                .Where(r => r.DriverId.ToString() == userId)
+                .OrderByDescending(r => r.DepartureTime)
+                .ToListAsync();
+
+            ViewBag.IsMyRidesMode = true;
+
+            return View("Index", myRides);
         }
 
         // 2. SZCZEGÓŁY
@@ -65,12 +94,22 @@ namespace projekt_zespołowy.Controllers
             return View(ride);
         }
 
-        // 3. TWORZENIE (Formularz)
+        // 3. TWORZENIE (GET)
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> Create()
         {
-            // Pobieramy pojazdy, aby wypełnić listę rozwijaną w widoku
-            var vehicles = await _context.Vehicles.ToListAsync();
+            var userId = _userManager.GetUserId(User);
+
+            var vehicles = await _context.Vehicles
+                .Where(v => v.OwnerId.ToString() == userId)
+                .ToListAsync();
+
+            if (!vehicles.Any())
+            {
+                TempData["Error"] = "Musisz dodać pojazd, zanim dodasz przejazd!";
+                return RedirectToAction("Create", "Vehicle");
+            }
 
             var model = new AddRideViewModel
             {
@@ -80,25 +119,27 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // 4. TWORZENIE (Zapis do bazy)
+        // 4. TWORZENIE (POST)
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(AddRideViewModel model)
         {
-            // 1. CZYSZCZENIE WALIDACJI (Techniczne)
             ModelState.Remove("AvailableVehicles");
             ModelState.Remove("StartLocation.Latitude");
             ModelState.Remove("StartLocation.Longtitude");
             ModelState.Remove("EndLocation.Latitude");
             ModelState.Remove("EndLocation.Longtitude");
 
+            var userId = _userManager.GetUserId(User);
+
             if (!ModelState.IsValid)
             {
-                model.AvailableVehicles = await _context.Vehicles.ToListAsync();
+                model.AvailableVehicles = await _context.Vehicles
+                    .Where(v => v.OwnerId.ToString() == userId).ToListAsync();
                 return View(model);
             }
 
-            // 2. POBRANIE POJAZDU
             var vehicle = await _context.Vehicles
                 .Include(v => v.Owner)
                 .FirstOrDefaultAsync(v => v.Id == model.SelectedVehicleId);
@@ -106,78 +147,40 @@ namespace projekt_zespołowy.Controllers
             if (vehicle == null)
             {
                 ModelState.AddModelError("", "Wybrany pojazd nie istnieje.");
-                model.AvailableVehicles = await _context.Vehicles.ToListAsync();
+                model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync();
                 return View(model);
             }
 
-
-            // Sprawdzenie daty wyjazdu
             if (model.DepartureTime <= DateTime.Now)
             {
                 ModelState.AddModelError("DepartureTime", "Data wyjazdu musi być w przyszłości.");
             }
 
-            // Sprawdzenie daty przyjazdu 
             if (model.ArrivalTime.HasValue && model.ArrivalTime <= model.DepartureTime)
             {
                 ModelState.AddModelError("ArrivalTime", "Data przyjazdu musi być późniejsza niż data wyjazdu.");
             }
 
-            // Sprawdzenie liczby miejsc
-            int maxPassengerSeats = vehicle.SeatsTotal > 0 ? vehicle.SeatsTotal - 1 : 0; 
-
+            int maxPassengerSeats = vehicle.SeatsTotal > 0 ? vehicle.SeatsTotal - 1 : 0;
             if (model.SeatsOffered > maxPassengerSeats)
             {
                 ModelState.AddModelError("SeatsOffered",
-                    $"Wybrany pojazd ({vehicle.Make} {vehicle.Model}) ma {vehicle.SeatsTotal} miejsc ogółem. " +
-                    $"Po odliczeniu kierowcy możesz zabrać maksymalnie {maxPassengerSeats} pasażerów.");
+                    $"Pojazd ma {vehicle.SeatsTotal} miejsc. Max pasażerów to {maxPassengerSeats}.");
             }
 
             if (!ModelState.IsValid)
             {
-                model.AvailableVehicles = await _context.Vehicles.ToListAsync();
+                model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync();
                 return View(model);
             }
 
+            var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId.ToString() == userId);
 
-
-            // 3. AUTO-NAPRAWA KIEROWCY (jesli pojazd jest bez wlasciciela)
-            if (vehicle.OwnerId == null)
+            if (driverProfile == null)
             {
-                var existingDriver = await _context.DriverProfiles.FirstOrDefaultAsync();
-                if (existingDriver != null)
-                {
-                    vehicle.OwnerId = existingDriver.UserId;
-                }
-                else
-                {
-                    var newUser = new User
-                    {
-                        Id = Guid.NewGuid(),
-                        FirstName = "Jan",
-                        LastName = "Kowalski",
-                        Email = "jan@test.pl",
-                        PhoneNumber = "123456789"
-                    };
-                    var newDriver = new DriverProfile
-                    {
-                        UserId = newUser.Id,
-                        User = newUser,
-                        IsVerified = true,
-                        DrivingLicenseImageUrl = "brak.jpg",
-                        CompletedRidesCount = 0,
-                        Rating = 5.0
-                    };
-                    _context.Users.Add(newUser);
-                    _context.DriverProfiles.Add(newDriver);
-                    vehicle.OwnerId = newUser.Id;
-                }
-                await _context.SaveChangesAsync();
+                return RedirectToAction("BecomeDriver", "DriverProfile");
             }
 
-            Guid driverId = vehicle.OwnerId.Value;
-
-            // 4. TWORZENIE DANYCH (Lokalizacje + Przejazd)
             var startLoc = new LocationPoint
             {
                 Id = Guid.NewGuid(),
@@ -202,7 +205,7 @@ namespace projekt_zespołowy.Controllers
             {
                 Id = Guid.NewGuid(),
                 VehicleId = model.SelectedVehicleId,
-                DriverId = driverId,
+                DriverId = driverProfile.UserId,
                 StartLocation = startLoc,
                 EndLocation = endLoc,
                 DepartureTime = model.DepartureTime,
@@ -215,15 +218,17 @@ namespace projekt_zespołowy.Controllers
                 Status = RideStatus.Published
             };
 
-            // 5. ZAPIS
             _context.OfferedRides.Add(ride);
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Pomyślnie dodano nowy przejazd!";
+
+            // ZMIANA: Przekierowanie do Index (tak jak w VehicleController)
             return RedirectToAction(nameof(Index));
         }
 
-        // 5. EDYCJA (Formularz)
+        // 5. EDYCJA (GET)
+        [Authorize]
         public async Task<IActionResult> Edit(Guid id)
         {
             var ride = await _context.OfferedRides
@@ -232,6 +237,13 @@ namespace projekt_zespołowy.Controllers
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (ride == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+            // Zabezpieczenie: Właściciel LUB Admin
+            if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
+            {
+                return Forbid();
+            }
 
             var model = new AddRideViewModel
             {
@@ -258,22 +270,24 @@ namespace projekt_zespołowy.Controllers
                 PricePerSeat = ride.PricePerSeat,
                 IsFlexiblePrice = ride.IsFlexiblePrice,
                 Notes = ride.Notes,
-                AvailableVehicles = await _context.Vehicles.ToListAsync()
+                AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync()
             };
 
             return View(model);
         }
 
-        // 6. EDYCJA (Zapis zmian)
+        // 6. EDYCJA (POST)
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Guid id, AddRideViewModel model)
         {
             ModelState.Remove("AvailableVehicles");
+            var userId = _userManager.GetUserId(User);
 
             if (!ModelState.IsValid)
             {
-                model.AvailableVehicles = await _context.Vehicles.ToListAsync();
+                model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync();
                 return View(model);
             }
 
@@ -284,7 +298,12 @@ namespace projekt_zespołowy.Controllers
 
             if (ride == null) return NotFound();
 
-            // Aktualizujemy proste pola
+            // Zabezpieczenie: Właściciel LUB Admin
+            if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
+            {
+                return Forbid();
+            }
+
             ride.VehicleId = model.SelectedVehicleId;
             ride.DepartureTime = model.DepartureTime;
             ride.ArrivalTime = model.ArrivalTime;
@@ -293,27 +312,24 @@ namespace projekt_zespołowy.Controllers
             ride.IsFlexiblePrice = model.IsFlexiblePrice;
             ride.Notes = model.Notes;
 
-            // Aktualizujemy dane lokalizacji (nadpisujemy istniejące rekordy)
             ride.StartLocation.Name = model.StartLocation.Name;
             ride.StartLocation.Address = model.StartLocation.Address;
             ride.StartLocation.City = model.StartLocation.City;
-            ride.StartLocation.Latitude = model.StartLocation.Latitude;
-            ride.StartLocation.Longtitude = model.StartLocation.Longtitude;
 
             ride.EndLocation.Name = model.EndLocation.Name;
             ride.EndLocation.Address = model.EndLocation.Address;
             ride.EndLocation.City = model.EndLocation.City;
-            ride.EndLocation.Latitude = model.EndLocation.Latitude;
-            ride.EndLocation.Longtitude = model.EndLocation.Longtitude;
 
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Przejazd zaktualizowany!";
+
+            // ZMIANA: Przekierowanie do Index (tak jak w VehicleController)
             return RedirectToAction(nameof(Index));
         }
 
-        // 7. USUWANIE (Pytanie)
-        // GET: Rides/Delete/5
+        // 7. USUWANIE (GET)
+        [Authorize]
         public async Task<IActionResult> Delete(Guid id)
         {
             var ride = await _context.OfferedRides
@@ -324,24 +340,41 @@ namespace projekt_zespołowy.Controllers
 
             if (ride == null) return NotFound();
 
+            var userId = _userManager.GetUserId(User);
+            // Zabezpieczenie: Właściciel LUB Admin
+            if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
+            {
+                return Forbid();
+            }
+
             return View(ride);
         }
 
         // POST: Rides/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
             var ride = await _context.OfferedRides.FindAsync(id);
             if (ride == null) return NotFound();
 
+            var userId = _userManager.GetUserId(User);
+
+            // Zabezpieczenie: Właściciel LUB Admin
+            if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
+            {
+                return Forbid();
+            }
+
             _context.OfferedRides.Remove(ride);
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Przejazd został usunięty!";
+
+            // ZMIANA: Przekierowanie do Index (tak jak w VehicleController)
+            // To naprawia problem z odświeżaniem listy po usunięciu
             return RedirectToAction(nameof(Index));
         }
-
-
     }
 }

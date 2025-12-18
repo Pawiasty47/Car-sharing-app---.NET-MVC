@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using projekt_zespołowy.Models;
 
 namespace projekt_zespołowy
@@ -17,7 +18,10 @@ namespace projekt_zespołowy
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
             var userManager = services.GetRequiredService<UserManager<User>>();
 
-            string[] roles = { "Passenger", "Driver" };
+            // ==========================================================
+            // 1. TWORZENIE RÓL
+            // ==========================================================
+            string[] roles = { "Admin", "Passenger", "Driver" };
 
             foreach (var role in roles)
             {
@@ -27,8 +31,72 @@ namespace projekt_zespołowy
                 }
             }
 
+            // ==========================================================
+            // 2. TWORZENIE ADMINA (Login: admin@projekt.pl, Hasło: admin11)
+            // ==========================================================
+            string adminEmail = "admin@projekt.pl";
 
-            if (!await userManager.Users.AnyAsync())
+            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+            if (adminUser == null)
+            {
+                adminUser = new User
+                {
+                    UserName = adminEmail,       // WAŻNE: Login to email
+                    Email = adminEmail,
+                    FirstName = "System",
+                    LastName = "Administrator",
+                    EmailConfirmed = true,
+                    PhoneNumber = "000000000"
+                };
+
+                var result = await userManager.CreateAsync(adminUser, "admin11");
+
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(adminUser, "Admin");
+
+                    // Profil Pasażera Admina
+                    if (!await db.PassengerProfiles.AnyAsync(p => p.UserId == adminUser.Id))
+                    {
+                        db.PassengerProfiles.Add(new PassengerProfile
+                        {
+                            User = adminUser,
+                            Rating = 5.0,
+                            CompletedBookingsCount = 0,
+                            PrefersNonSmoking = true,
+                            PrefersQuietRide = true
+                        });
+                    }
+
+                    // Profil Kierowcy Admina
+                    if (!await db.DriverProfiles.AnyAsync(d => d.UserId == adminUser.Id))
+                    {
+                        db.DriverProfiles.Add(new DriverProfile
+                        {
+                            UserId = adminUser.Id,
+                            DrivingLicenseImageUrl = "admin_placeholder.jpg",
+                            CompletedRidesCount = 0,
+                            Rating = 5.0
+                        });
+                    }
+
+                    await db.SaveChangesAsync();
+                }
+                else
+                {
+                    // --- ZMIANA: Rzucamy błąd, żebyś widział go na ekranie jeśli hasło jest złe ---
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new Exception($"KRYTYCZNY BŁĄD TWORZENIA ADMINA: {errors}");
+                }
+            }
+
+            // ==========================================================
+            // 3. UŻYTKOWNICY TESTOWI
+            // ==========================================================
+
+            // ZMIANA: Sprawdzamy Count <= 1 (tylko admin), bo Any() zwróciłoby true przez obecność admina
+            if (await userManager.Users.CountAsync() <= 1)
             {
                 var users = new List<User>
                 {
@@ -41,17 +109,27 @@ namespace projekt_zespołowy
 
                 foreach (var user in users)
                 {
-                    await userManager.CreateAsync(user, "Test123!");
-                    await userManager.AddToRoleAsync(user, "Passenger");
+                    var r = await userManager.CreateAsync(user, "Test123!");
+                    if (r.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(user, "Passenger");
+                        db.PassengerProfiles.Add(new PassengerProfile { User = user, Rating = 5.0, CompletedBookingsCount = 0 });
+                    }
                 }
+                await db.SaveChangesAsync();
             }
 
-            var allUsers = await db.Users.ToListAsync();
+            // ==========================================================
+            // 4. KIEROWCY (z istniejących userów testowych)
+            // ==========================================================
 
+            // Pobieramy userów (pomijając admina)
+            var potentialDrivers = await userManager.Users
+                .Where(u => u.Email != adminEmail)
+                .Take(5)
+                .ToListAsync();
 
-            var testDrivers = await userManager.Users.Take(2).ToListAsync();
-
-            foreach (var user in testDrivers)
+            foreach (var user in potentialDrivers)
             {
                 if (!await db.DriverProfiles.AnyAsync(d => d.UserId == user.Id))
                 {
@@ -71,25 +149,34 @@ namespace projekt_zespołowy
 
             var allDriverProfiles = await db.DriverProfiles.ToListAsync();
 
-
-            if (!await db.Vehicles.AnyAsync())
+            // ==========================================================
+            // 5. POJAZDY
+            // ==========================================================
+            if (allDriverProfiles.Any())
             {
-                var sampleVehicles = new List<Vehicle>
+                // Sprawdzamy czy pojazdy już są
+                if (!await db.Vehicles.AnyAsync())
                 {
-                    new Vehicle { OwnerId = allDriverProfiles[0].UserId, Make = "Toyota", Model = "Corolla", RegistrationNumber = "KR1234A", SeatsTotal = 5, SeatsAvailable = 4, Color = "Czarny" },
-                    new Vehicle { OwnerId = allDriverProfiles[1].UserId, Make = "Honda", Model = "Civic", RegistrationNumber = "WA5678B", SeatsTotal = 5, SeatsAvailable = 3, Color = "Biały" },
-                    new Vehicle { OwnerId = allDriverProfiles[2].UserId, Make = "Ford", Model = "Focus", RegistrationNumber = "GD2222C", SeatsTotal = 5, SeatsAvailable = 4, Color = "Niebieski" },
-                    new Vehicle { OwnerId = allDriverProfiles[3].UserId, Make = "BMW", Model = "320d", RegistrationNumber = "PO9999D", SeatsTotal = 5, SeatsAvailable = 2, Color = "Czerwony" },
-                    new Vehicle { OwnerId = allDriverProfiles[4].UserId, Make = "Audi", Model = "A4", RegistrationNumber = "SZ1111E", SeatsTotal = 5, SeatsAvailable = 4, Color = "Srebrny" }
-                };
+                    var count = allDriverProfiles.Count;
+                    var sampleVehicles = new List<Vehicle>
+                    {
+                        new Vehicle { OwnerId = allDriverProfiles[0 % count].UserId, Make = "Toyota", Model = "Corolla", RegistrationNumber = "KR1234A", SeatsTotal = 5, SeatsAvailable = 4, Color = "Czarny" },
+                        new Vehicle { OwnerId = allDriverProfiles[1 % count].UserId, Make = "Honda", Model = "Civic", RegistrationNumber = "WA5678B", SeatsTotal = 5, SeatsAvailable = 3, Color = "Biały" },
+                        new Vehicle { OwnerId = allDriverProfiles[2 % count].UserId, Make = "Ford", Model = "Focus", RegistrationNumber = "GD2222C", SeatsTotal = 5, SeatsAvailable = 4, Color = "Niebieski" },
+                        new Vehicle { OwnerId = allDriverProfiles[3 % count].UserId, Make = "BMW", Model = "320d", RegistrationNumber = "PO9999D", SeatsTotal = 5, SeatsAvailable = 2, Color = "Czerwony" },
+                        new Vehicle { OwnerId = allDriverProfiles[4 % count].UserId, Make = "Audi", Model = "A4", RegistrationNumber = "SZ1111E", SeatsTotal = 5, SeatsAvailable = 4, Color = "Srebrny" }
+                    };
 
-                db.Vehicles.AddRange(sampleVehicles);
-                await db.SaveChangesAsync();
+                    db.Vehicles.AddRange(sampleVehicles);
+                    await db.SaveChangesAsync();
+                }
             }
 
             var allVehicles = await db.Vehicles.ToListAsync();
 
-
+            // ==========================================================
+            // 6. LOKALIZACJE I PRZEJAZDY
+            // ==========================================================
             var locations = await db.LocationPoints.ToListAsync();
             if (!locations.Any())
             {
@@ -99,22 +186,8 @@ namespace projekt_zespołowy
                 locations = new List<LocationPoint>();
                 for (int i = 0; i < 5; i++)
                 {
-                    locations.Add(new LocationPoint
-                    {
-                        Name = miastaStart[i],
-                        Latitude = 50 + random.NextDouble(),
-                        Longtitude = 19 + random.NextDouble(),
-                        Address = $"{miastaStart[i]} - centrum",
-                        City = miastaStart[i]
-                    });
-                    locations.Add(new LocationPoint
-                    {
-                        Name = miastaEnd[i],
-                        Latitude = 52 + random.NextDouble(),
-                        Longtitude = 20 + random.NextDouble(),
-                        Address = $"{miastaEnd[i]} - centrum",
-                        City = miastaEnd[i]
-                    });
+                    locations.Add(new LocationPoint { Name = miastaStart[i], Latitude = 50 + random.NextDouble(), Longtitude = 19 + random.NextDouble(), Address = $"{miastaStart[i]} - centrum", City = miastaStart[i] });
+                    locations.Add(new LocationPoint { Name = miastaEnd[i], Latitude = 52 + random.NextDouble(), Longtitude = 20 + random.NextDouble(), Address = $"{miastaEnd[i]} - centrum", City = miastaEnd[i] });
                 }
 
                 db.LocationPoints.AddRange(locations);
@@ -123,8 +196,7 @@ namespace projekt_zespołowy
 
             locations = await db.LocationPoints.ToListAsync();
 
-
-            if (!await db.OfferedRides.AnyAsync())
+            if (!await db.OfferedRides.AnyAsync() && allVehicles.Any() && locations.Count >= 10)
             {
                 var rides = new List<OfferedRide>();
                 for (int i = 0; i < 5; i++)

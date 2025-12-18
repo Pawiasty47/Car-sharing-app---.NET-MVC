@@ -7,7 +7,7 @@ using projekt_zespołowy.Models.ViewModels;
 
 namespace projekt_zespołowy.Controllers
 {
-    [Authorize] // Wymagamy logowania, jeśli chcesz zabezpieczyć samochody
+    [Authorize] // Wymagamy logowania
     public class VehicleController : Controller
     {
         private readonly AppDbContext _context;
@@ -19,17 +19,23 @@ namespace projekt_zespołowy.Controllers
             _userManager = userManager;
         }
 
-        // Wyświetla wszystkie samochody
+        // GET: Vehicle
+        // Wyświetla wszystkie samochody (tryb ogólny)
         public async Task<IActionResult> Index()
         {
             var vehicles = await _context.Vehicles
                 .Include(v => v.Owner)
                 .ToListAsync();
 
+            // WAŻNE: Informujemy widok, że to jest lista ogólna
+            // (Ukryje przyciski edycji dla nie-właścicieli i nie-adminów)
+            ViewBag.IsMyVehiclesMode = false;
+
             return View(vehicles);
         }
 
-        // Wyświetla tylko samochody zalogowanego użytkownika
+        // GET: Vehicle/MyVehicles
+        // Wyświetla tylko samochody zalogowanego użytkownika (tryb zarządzania)
         public async Task<IActionResult> MyVehicles()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -40,22 +46,33 @@ namespace projekt_zespołowy.Controllers
                 .Where(v => v.OwnerId == user.Id)
                 .ToListAsync();
 
-            return View("Index", vehicles); // Korzystamy z tego samego widoku co Index
+            // WAŻNE: Informujemy widok, że to jest zakładka "Moje samochody"
+            // (Pokaże przyciski edycji/usuwania)
+            ViewBag.IsMyVehiclesMode = true;
+
+            // Używamy tego samego widoku co Index
+            return View("Index", vehicles);
         }
 
+        // GET: Vehicle/Details/5
         public async Task<IActionResult> Details(Guid id)
         {
-            var v = await _context.Vehicles.FirstOrDefaultAsync(x => x.Id == id);
+            var v = await _context.Vehicles
+                .Include(v => v.Owner) // Warto dołączyć dane właściciela
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (v == null) return NotFound();
 
             return View(v);
         }
 
+        // GET: Vehicle/Create
         public IActionResult Create()
         {
             return View();
         }
 
+        // POST: Vehicle/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(AddVehicleViewModel vehicle)
@@ -63,11 +80,9 @@ namespace projekt_zespołowy.Controllers
             if (!ModelState.IsValid)
                 return View(vehicle);
 
-            // Pobranie zalogowanego użytkownika
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            // Wybór OwnerId: ręcznie podany lub domyślnie zalogowany użytkownik
             Guid ownerId;
             if (!vehicle.OwnerId.HasValue || vehicle.OwnerId.Value == Guid.Empty)
             {
@@ -97,11 +112,18 @@ namespace projekt_zespołowy.Controllers
             return RedirectToAction("Index");
         }
 
-
+        // GET: Vehicle/Edit/5
         public async Task<IActionResult> Edit(Guid id)
         {
             var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
+
+            // Opcjonalne zabezpieczenie: Sprawdź czy edytujący to właściciel lub Admin
+            var user = await _userManager.GetUserAsync(User);
+            if (!User.IsInRole("Admin") && v.OwnerId != user.Id)
+            {
+                return Forbid(); // Zabroń edycji cudzego auta przez URL
+            }
 
             var model = new AddVehicleViewModel
             {
@@ -116,6 +138,7 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
+        // POST: Vehicle/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Guid id, AddVehicleViewModel model)
@@ -126,6 +149,13 @@ namespace projekt_zespołowy.Controllers
             var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
+            // Opcjonalne zabezpieczenie po stronie POST
+            var user = await _userManager.GetUserAsync(User);
+            if (!User.IsInRole("Admin") && v.OwnerId != user.Id)
+            {
+                return Forbid();
+            }
+
             v.Make = model.Make;
             v.Model = model.Model;
             v.RegistrationNumber = model.RegistrationNumber;
@@ -135,9 +165,12 @@ namespace projekt_zespołowy.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Pojazd zaktualizowany!";
+            // Jeśli edytowaliśmy w trybie "Moje pojazdy", warto tam wrócić,
+            // ale Index jest bezpiecznym domyślnym wyborem.
             return RedirectToAction("Index");
         }
 
+        // GET: Vehicle/Delete/5
         public async Task<IActionResult> Delete(Guid id)
         {
             var v = await _context.Vehicles.FindAsync(id);
@@ -146,21 +179,29 @@ namespace projekt_zespołowy.Controllers
             return View(v);
         }
 
-        [HttpPost]
+        // POST: Vehicle/Delete/5
+        [HttpPost, ActionName("Delete")] // WAŻNE: To pozwala formularzowi asp-action="Delete" znaleźć tę metodę
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
             var vehicle = await _context.Vehicles.FindAsync(id);
             if (vehicle == null) return NotFound();
 
+            // Zabezpieczenie usuwania
+            var user = await _userManager.GetUserAsync(User);
+            if (!User.IsInRole("Admin") && vehicle.OwnerId != user.Id)
+            {
+                return Forbid();
+            }
+
+            // Usuwanie powiązanych ofert przejazdów
             var rides = _context.OfferedRides.Where(r => r.VehicleId == id);
             _context.OfferedRides.RemoveRange(rides);
 
             _context.Vehicles.Remove(vehicle);
-
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Pojazd oraz powiązane przejazdy zostały usunięte!";
+            TempData["SuccessMessage"] = "Pojazd usunięty!";
             return RedirectToAction(nameof(Index));
         }
     }

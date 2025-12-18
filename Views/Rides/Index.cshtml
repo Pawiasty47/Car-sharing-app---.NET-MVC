@@ -1,7 +1,15 @@
 ﻿@model IEnumerable<projekt_zespołowy.Models.OfferedRide>
+@using Microsoft.AspNetCore.Identity
+@using projekt_zespołowy.Models
+
+@* POPRAWKA: Używamy Twojej klasy 'User', a nie domyślnego 'IdentityUser' *@
+@inject UserManager<User> UserManager
 
 @{
     ViewData["Title"] = "Dostępne przejazdy";
+
+    // Pobieramy ID zalogowanego użytkownika (jako String)
+    var currentUserId = UserManager.GetUserId(User);
 }
 
 <div class="container mt-4">
@@ -83,9 +91,26 @@
         <div class="row g-4">
             @foreach (var item in Model)
             {
+                // Obliczenia pomocnicze
+                var seatsAvailable = item.SeatsOffered - item.SeatsTaken;
+                var isFull = seatsAvailable <= 0;
+
+                // 1. Sprawdzamy czy to właściciel (tak jak było wcześniej)
+                var isOwner = currentUserId != null && item.DriverId.ToString() == currentUserId;
+
+                // 2. NOWOŚĆ: Sprawdzamy czy użytkownik to Admin
+                // UWAGA: Upewnij się, że w bazie rola nazywa się dokładnie "Admin" (lub "Administrator")
+                var isAdmin = User.IsInRole("Admin");
+
+                // 3. Łączymy warunki: Pokaż przyciski jeśli to właściciel LUB admin
+                var canEditOrDelete = isOwner || isAdmin;
+
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 shadow-sm border-0 hover-effect">
+
+                        @* ... (Reszta kodu karty bez zmian: nagłówek, body itp.) ... *@
                         <div class="card-header bg-white border-bottom-0 pt-3">
+                            @* ... kod nagłówka ... *@
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="badge bg-primary rounded-pill">
                                     <i class="bi bi-calendar-event me-1"></i>
@@ -98,13 +123,15 @@
                         </div>
 
                         <div class="card-body">
+                            @* ... kod środka karty (trasa, godzina, auto) ... *@
+                            @* (Wklejam skrót, żeby nie zajmować miejsca - tu nic nie zmieniasz) *@
                             <div class="d-flex align-items-center mb-3">
                                 <div class="text-center me-3">
                                     <div class="fw-bold fs-5">@item.DepartureTime.ToString("HH:mm")</div>
                                     <small class="text-muted">Wyjazd</small>
                                 </div>
-                                <div class="flex-grow-1 border-top border-2 border-secondary position-relative text-center">
-                                    <i class="bi bi-arrow-right-circle-fill position-absolute top-0 start-50 translate-middle mt-0 bg-white text-secondary"></i>
+                                <div class="flex-grow-1 border-top border-2 border-secondary position-relative text-center" style="height: 0;">
+                                    <i class="bi bi-arrow-right-circle-fill position-absolute top-0 start-50 translate-middle bg-white text-secondary" style="margin-top: -1px;"></i>
                                 </div>
                                 <div class="text-center ms-3">
                                     @if (item.ArrivalTime.HasValue)
@@ -120,33 +147,50 @@
                             </div>
 
                             <h5 class="card-title text-center fw-bold mb-3">
-                                @item.StartLocation.City <i class="bi bi-arrow-right mx-2 text-muted"></i> @item.EndLocation.City
+                                @(item.StartLocation?.City ?? "Nieznane")
+                                <i class="bi bi-arrow-right mx-2 text-muted"></i>
+                                @(item.EndLocation?.City ?? "Nieznane")
                             </h5>
-
                             <hr class="text-muted opacity-25">
-
                             <p class="card-text small text-muted mb-2">
                                 <i class="bi bi-car-front-fill me-2 text-primary"></i>
-                                <strong>Pojazd:</strong> @item.Vehicle?.Make @item.Vehicle?.Model
+                                <strong>Pojazd:</strong> @(item.Vehicle?.Make ?? "Brak") @(item.Vehicle?.Model)
                             </p>
-
                             <p class="card-text small text-muted">
                                 <i class="bi bi-people-fill me-2 text-primary"></i>
-                                <strong>Miejsca:</strong> @(item.SeatsOffered - item.SeatsTaken) wolnych (z @item.SeatsOffered)
+                                <strong>Miejsca:</strong>
+                                @if (isFull)
+                                {
+                                    <span class="badge bg-danger">BRAK MIEJSC</span>
+                                }
+                                else
+                                {
+                                    <span>@seatsAvailable wolnych (z @item.SeatsOffered)</span>
+                                }
                             </p>
                         </div>
 
+
                         <div class="card-footer bg-light border-top-0 pb-3 pt-0">
                             <div class="d-grid gap-2 d-flex justify-content-end mt-2">
+
                                 <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm">
                                     <i class="bi bi-info-circle"></i> Szczegóły
                                 </a>
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+
+                                @* ZMIANA TUTAJ: Używamy nowej zmiennej canEditOrDelete *@
+                                @if (canEditOrDelete)
+                                {
+                                    @* Opcjonalnie: Admin może chcieć tylko usuwać, a nie edytować. 
+                                       Ale zazwyczaj daje się obie opcje. *@
+
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                }
                             </div>
                         </div>
                     </div>

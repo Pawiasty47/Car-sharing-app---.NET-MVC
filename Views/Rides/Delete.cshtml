@@ -4,22 +4,45 @@
     ViewData["Title"] = "Usuń przejazd";
 }
 
-<h2>Usuń przejazd</h2>
+<h1>Usuń przejazd</h1>
 
-<div class="alert alert-warning">
-    <strong>Uwaga!</strong> Czy na pewno chcesz usunąć ten przejazd?
+<div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading">Uwaga!</h4>
+    <p>Czy na pewno chcesz usunąć ten przejazd? Tej operacji nie można cofnąć.</p>
 </div>
 
-<div class="mb-3">
-    <p><strong>Pojazd:</strong> @Model.Vehicle.Make @Model.Vehicle.Model (@Model.Vehicle.RegistrationNumber)</p>
-    <p><strong>Wyjazd:</strong> @Model.StartLocation.City - @Model.EndLocation.City</p>
-    <p><strong>Data wyjazdu:</strong> @Model.DepartureTime.ToString("g")</p>
+<div>
+    <h4>Szczegóły przejazdu</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            Pojazd
+        </dt>
+        <dd class="col-sm-10">
+            @* Użycie ?. (null-conditional) zapobiega błędom, jeśli pojazd jest nullem *@
+            @(Model.Vehicle?.Make ?? "Brak danych") @(Model.Vehicle?.Model)
+            (@(Model.Vehicle?.RegistrationNumber ?? "Brak nr rej."))
+        </dd>
+
+        <dt class="col-sm-2">
+            Trasa
+        </dt>
+        <dd class="col-sm-10">
+            @* Bezpieczne wyświetlanie miast *@
+            @(Model.StartLocation?.City ?? "Nieznane") &rarr; @(Model.EndLocation?.City ?? "Nieznane")
+        </dd>
+
+        <dt class="col-sm-2">
+            Data wyjazdu
+        </dt>
+        <dd class="col-sm-10">
+            @Model.DepartureTime.ToString("g")
+        </dd>
+    </dl>
 </div>
 
-<form asp-action="Delete" method="post" id="deleteForm">
+<form asp-action="Delete" method="post">
     <input type="hidden" asp-for="Id" />
-    <button type="submit" class="btn btn-danger" onclick="return confirm('Czy na pewno chcesz usunąć ten przejazd?');">
-        Usuń
-    </button>
+    <button type="submit" class="btn btn-danger">Usuń</button>
     <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
 </form>

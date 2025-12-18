@@ -173,7 +173,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasIndex("RideId");
 
-                    b.ToTable("Waypoints");
+                    b.ToTable("Waypoints", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.Booking", b =>
@@ -214,7 +214,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasIndex("RideId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.CityIncentive", b =>
@@ -245,7 +245,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CityIncentives");
+                    b.ToTable("CityIncentives", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.DriverProfile", b =>
@@ -267,7 +267,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("DriverProfiles");
+                    b.ToTable("DriverProfiles", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.LocationPoint", b =>
@@ -296,7 +296,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LocationPoints");
+                    b.ToTable("LocationPoints", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.Notification", b =>
@@ -326,7 +326,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.OfferedRide", b =>
@@ -382,7 +382,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasIndex("VehicleId");
 
-                    b.ToTable("OfferedRides");
+                    b.ToTable("OfferedRides", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.PassengerProfile", b =>
@@ -416,7 +416,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("PassengerProfiles");
+                    b.ToTable("PassengerProfiles", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.Payment", b =>
@@ -446,7 +446,7 @@ namespace projekt_zespołowy.Migrations
                     b.HasIndex("BookingId")
                         .IsUnique();
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.Review", b =>
@@ -482,7 +482,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasIndex("ToUserId");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.User", b =>
@@ -594,7 +594,7 @@ namespace projekt_zespołowy.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Vehicles");
+                    b.ToTable("Vehicles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

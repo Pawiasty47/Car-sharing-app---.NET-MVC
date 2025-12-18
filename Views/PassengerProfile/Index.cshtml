@@ -22,6 +22,7 @@
                     {
                         <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto shadow"
                              style="width: 180px; height: 180px; font-size: 80px;">
+                            👤
                         </div>
                     }
                 </div>
@@ -56,7 +57,6 @@
                 <span class="badge rounded-pill p-3 @(Model.PrefersNonSmoking ? "bg-success" : "bg-light text-secondary border")">
                     @(Model.PrefersNonSmoking ? "Palący" : "Nie toleruję palenia")
                 </span>
-
             </div>
 
             <div class="mt-5 text-end">
@@ -81,6 +81,24 @@
                     </a>
                 }
             </div>
+
+            @if (User.IsInRole("Admin"))
+            {
+                <hr class="my-5" />
+                <div class="alert alert-danger shadow-sm">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="alert-heading mb-1">🛠️ Panel Administratora</h4>
+                            <p class="mb-0">Masz uprawnienia do zarządzania użytkownikami systemu.</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a asp-controller="Admin" asp-action="Users" class="btn btn-danger btn-lg w-100">
+                                👥 Zarządzaj Użytkownikami
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </div>

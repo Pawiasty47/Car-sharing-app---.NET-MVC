@@ -1,0 +1,75 @@
+﻿@model List<projekt_zespołowy.Models.AdminUserListVM>
+
+@{
+    ViewData["Title"] = "Lista Użytkowników";
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="container mt-5">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <h2>👥 Użytkownicy w systemie</h2>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Imię i Nazwisko</th>
+                        <th>Email</th>
+                        <th class="text-center">Kierowca?</th>
+                        <th class="text-end">Opcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        <tr>
+                            <td class="align-middle">
+                                <strong>@user.FullName</strong>
+                            </td>
+                            <td class="align-middle">
+                                @user.Email
+                            </td>
+                            <td class="text-center align-middle">
+                                @if (user.IsDriver)
+                                {
+                                    <span class="badge bg-success">TAK</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary" style="opacity: 0.5">NIE</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('Czy na pewno chcesz usunąć użytkownika @user.FullName?');">
+                                        Usuń
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -114,7 +114,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .HasOne(b => b.Passenger)
             .WithMany()
             .HasForeignKey(b => b.PassengerUserId)
-            .HasPrincipalKey(p => p.UserId);
+            .HasPrincipalKey(p => p.Id);
 
         model.Entity<Waypoint>()
             .HasOne(w => w.Ride)

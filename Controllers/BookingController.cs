@@ -1,82 +1,139 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 
 namespace projekt_zespołowy.Controllers
 {
-    public class BookingController : Controller //narazie podstawowy crud dla booking
+    [Authorize] // Tylko zalogowani użytkownicy mogą rezerwować
+    public class BookingController : Controller
     {
-        private static List<Booking> _bookings = new List<Booking>();
+        private readonly AppDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public IActionResult Index()
+        public BookingController(AppDbContext context, UserManager<User> userManager)
         {
-            return View(_bookings);
+            _context = context;
+            _userManager = userManager;
         }
 
-        public IActionResult Details(Guid id)
+        // 1. MOJE REZERWACJE (Lista biletów pasażera)
+        public async Task<IActionResult> Index()
         {
-            var b = _bookings.FirstOrDefault(x => x.Id == id);
-            if (b == null) return NotFound();
-            return View(b);
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var myBookings = await _context.Bookings
+                // 1. Pobierz Przejazd
+                .Include(b => b.Ride)
+                    // 2. Pobierz Lokalizacje Start/Koniec z tego przejazdu
+                    .ThenInclude(r => r.StartLocation)
+                .Include(b => b.Ride)
+                    .ThenInclude(r => r.EndLocation)
+                // 3. Pobierz Kierowcę i jego dane osobowe (User)
+                .Include(b => b.Ride)
+                    .ThenInclude(r => r.Driver)
+                        .ThenInclude(d => d.User)
+                // Filtrowanie i sortowanie
+                .Where(b => b.PassengerUserId == user.Id)
+                .OrderByDescending(b => b.CreatedAt)
+                .ToListAsync();
+
+            return View(myBookings);
         }
 
-        public IActionResult Create()
-        {
-            return View(new Booking());
-        }
-
+        // 2. REZERWACJA MIEJSCA (Akcja POST z widoku Details)
         [HttpPost]
-        public IActionResult Create(Booking model)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Guid rideId, int seats = 1, string? comment = null)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
 
-            model.Id = Guid.NewGuid();
-            model.CreatedAt = DateTime.UtcNow;
-            _bookings.Add(model);
+            // Pobieramy przejazd z bazy
+            var ride = await _context.OfferedRides.FirstOrDefaultAsync(r => r.Id == rideId);
+            if (ride == null) return NotFound();
 
-            TempData["SuccessMessage"] = "Rezerwacja utworzona!";
-            return RedirectToAction("Index");
+            // --- WALIDACJE ---
+
+            // A. Czy kierowca próbuje zarezerwować u siebie?
+            if (ride.DriverId == user.Id)
+            {
+                TempData["ErrorMessage"] = "Nie możesz zarezerwować miejsca we własnym przejeździe.";
+                return RedirectToAction("Details", "Rides", new { id = rideId });
+            }
+
+            // B. Czy jest wystarczająco miejsc?
+            if ((ride.SeatsOffered - ride.SeatsTaken) < seats)
+            {
+                TempData["ErrorMessage"] = "Niestety, brak wystarczającej liczby wolnych miejsc.";
+                return RedirectToAction("Details", "Rides", new { id = rideId });
+            }
+
+            // C. Czy użytkownik już ma rezerwację na ten przejazd?
+            bool alreadyBooked = await _context.Bookings
+                .AnyAsync(b => b.RideId == rideId && b.PassengerUserId == user.Id);
+
+            if (alreadyBooked)
+            {
+                TempData["ErrorMessage"] = "Masz już aktywną rezerwację na ten przejazd.";
+                return RedirectToAction("Details", "Rides", new { id = rideId });
+            }
+
+            // --- ZAPIS ---
+            var booking = new Booking
+            {
+                RideId = rideId,
+                PassengerUserId = user.Id,
+                SeatsRequested = seats,
+                CommentByPassenger = comment,
+                Status = BookingStatus.Confirmed,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Zwiększamy licznik zajętych miejsc w przejeździe
+            ride.SeatsTaken += seats;
+
+            _context.Bookings.Add(booking);
+            // EF Core zaktualizuje też ride.SeatsTaken, bo obiekt jest śledzony
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Rezerwacja udana! Znajdziesz ją w zakładce 'Moje bilety'.";
+            return RedirectToAction("Details", "Rides", new { id = rideId });
         }
 
-        public IActionResult Edit(Guid id)
-        {
-            var b = _bookings.FirstOrDefault(x => x.Id == id);
-            if (b == null) return NotFound();
-            return View(b);
-        }
-
+        // 3. ANULOWANIE REZERWACJI
         [HttpPost]
-        public IActionResult Edit(Guid id, Booking model)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Cancel(Guid id)
         {
-            var b = _bookings.FirstOrDefault(x => x.Id == id);
-            if (b == null) return NotFound();
+            var user = await _userManager.GetUserAsync(User);
 
-            b.Status = model.Status;
-            b.PaymentStatus = model.PaymentStatus;
-            b.SeatsRequested = model.SeatsRequested;
-            b.CommentByPassenger = model.CommentByPassenger;
-            b.CommentByDriver = model.CommentByDriver;
+            var booking = await _context.Bookings
+                .Include(b => b.Ride)
+                .FirstOrDefaultAsync(b => b.Id == id);
 
-            TempData["SuccessMessage"] = "Rezerwacja zaktualizowana!";
-            return RedirectToAction("Index");
-        }
+            if (booking == null) return NotFound();
 
-        public IActionResult Delete(Guid id)
-        {
-            var b = _bookings.FirstOrDefault(x => x.Id == id);
-            if (b == null) return NotFound();
-            return View(b);
-        }
+            // Sprawdzamy, czy to rezerwacja tego użytkownika
+            if (booking.PassengerUserId != user.Id)
+            {
+                return Forbid();
+            }
 
-        [HttpPost]
-        public IActionResult DeleteConfirmed(Guid id)
-        {
-            var b = _bookings.FirstOrDefault(x => x.Id == id);
-            if (b == null) return NotFound();
+            // Przywracamy wolne miejsca w przejeździe
+            if (booking.Ride != null)
+            {
+                booking.Ride.SeatsTaken -= booking.SeatsRequested;
+                if (booking.Ride.SeatsTaken < 0) booking.Ride.SeatsTaken = 0; // Zabezpieczenie
+            }
 
-            _bookings.Remove(b);
-            TempData["SuccessMessage"] = "Rezerwacja usunięta!";
-            return RedirectToAction("Index");
+            _context.Bookings.Remove(booking);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Rezerwacja została anulowana.";
+            return RedirectToAction(nameof(Index));
         }
     }
 }

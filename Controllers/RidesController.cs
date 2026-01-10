@@ -83,13 +83,22 @@ namespace projekt_zespołowy.Controllers
         {
             var ride = await _context.OfferedRides
                 .Include(r => r.Vehicle)
-                .Include(r => r.Driver)
-                    .ThenInclude(d => d.User)
+                .Include(r => r.Driver).ThenInclude(d => d.User) // Dane kierowcy
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (ride == null) return NotFound();
+
+            // NOWOŚĆ: Pobieramy listę rezerwacji dla tego przejazdu
+            // Dołączamy (Include) dane pasażera, żeby wyświetlić imię i nazwisko
+            var bookings = await _context.Bookings
+                .Include(b => b.Passenger)
+                .Where(b => b.RideId == id)
+                .ToListAsync();
+
+            // Przekazujemy listę do widoku za pomocą ViewBag
+            ViewBag.Bookings = bookings;
 
             return View(ride);
         }
@@ -376,5 +385,6 @@ namespace projekt_zespołowy.Controllers
             // To naprawia problem z odświeżaniem listy po usunięciu
             return RedirectToAction(nameof(Index));
         }
+
     }
 }

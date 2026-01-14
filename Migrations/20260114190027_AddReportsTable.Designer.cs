@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace projekt_zespołowy.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260114190027_AddReportsTable")]
+    partial class AddReportsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -273,69 +276,6 @@ namespace projekt_zespołowy.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CityIncentives");
-                });
-
-            modelBuilder.Entity("projekt_zespołowy.Models.DriverApplication", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdminFeedback")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ApplicationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DriverLicenseNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IdDocumentNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LicenseCategories")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PESEL")
-                        .IsRequired()
-                        .HasMaxLength(11)
-                        .HasColumnType("nvarchar(11)");
-
-                    b.Property<string>("SecondName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("VehicleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("VehicleId");
-
-                    b.ToTable("DriverApplications");
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.DriverProfile", b =>
@@ -659,9 +599,6 @@ namespace projekt_zespołowy.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("DriverProfileUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Make")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -670,7 +607,7 @@ namespace projekt_zespołowy.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("OwnerId")
+                    b.Property<Guid?>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("RegistrationNumber")
@@ -684,8 +621,6 @@ namespace projekt_zespołowy.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DriverProfileUserId");
 
                     b.HasIndex("OwnerId");
 
@@ -789,25 +724,6 @@ namespace projekt_zespołowy.Migrations
                     b.Navigation("Passenger");
 
                     b.Navigation("Ride");
-                });
-
-            modelBuilder.Entity("projekt_zespołowy.Models.DriverApplication", b =>
-                {
-                    b.HasOne("projekt_zespołowy.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("projekt_zespołowy.Models.Vehicle", "Vehicle")
-                        .WithMany()
-                        .HasForeignKey("VehicleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
-
-                    b.Navigation("Vehicle");
                 });
 
             modelBuilder.Entity("projekt_zespołowy.Models.DriverProfile", b =>
@@ -917,15 +833,10 @@ namespace projekt_zespołowy.Migrations
 
             modelBuilder.Entity("projekt_zespołowy.Models.Vehicle", b =>
                 {
-                    b.HasOne("projekt_zespołowy.Models.DriverProfile", null)
+                    b.HasOne("projekt_zespołowy.Models.DriverProfile", "Owner")
                         .WithMany("Vehicles")
-                        .HasForeignKey("DriverProfileUserId");
-
-                    b.HasOne("projekt_zespołowy.Models.User", "Owner")
-                        .WithMany()
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Owner");
                 });

@@ -22,6 +22,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Waypoint> Waypoints { get; set; }
     public DbSet<DriverApplication> DriverApplications { get; set; }
+    public DbSet<AppReport> Reports { get; set; }
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -132,6 +133,11 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .WithMany()
             .HasForeignKey(d => d.VehicleId)
             .OnDelete(DeleteBehavior.Restrict);
+        model.Entity<AppReport>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
     }
 }

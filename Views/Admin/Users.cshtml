@@ -1,7 +1,7 @@
 ﻿@model List<projekt_zespołowy.Models.AdminUserListVM>
 
 @{
-    ViewData["Title"] = "Lista Użytkowników";
+    ViewData["Title"] = "Panel Administratora";
 }
 
 @if (TempData["Success"] != null)
@@ -21,13 +21,27 @@
 }
 
 <div class="container mt-5">
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <h2>👥 Użytkownicy w systemie</h2>
+
+    <!-- Nagłówek i przyciski akcji -->
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Panel Administratora</h2>
+            <p class="text-muted mb-0">Zarządzaj użytkownikami i zgłoszeniami w systemie.</p>
+        </div>
+
+        <!-- NOWY PRZYCISK DO ZGŁOSZEŃ -->
+        <div>
+            <a asp-controller="Report" asp-action="Index" class="btn btn-warning text-dark fw-bold shadow-sm">
+                <i class="bi bi-envelope-exclamation-fill me-2"></i>Zgłoszenia użytkowników
+            </a>
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <!-- Sekcja: Użytkownicy -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold text-success"><i class="bi bi-people-fill me-2"></i>Użytkownicy w systemie</h5>
+        </div>
         <div class="card-body p-0">
             <table class="table table-striped table-hover mb-0">
                 <thead class="table-dark">
@@ -62,7 +76,7 @@
                                 <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
                                             onclick="return confirm('Czy na pewno chcesz usunąć użytkownika @user.FullName?');">
-                                        Usuń
+                                        <i class="bi bi-trash"></i> Usuń
                                     </button>
                                 </form>
                             </td>

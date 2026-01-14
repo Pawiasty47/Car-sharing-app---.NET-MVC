@@ -1,5 +1,23 @@
-﻿<footer class="footer mt-auto py-3 bg-light border-top text-center text-muted">
-    <div class="container">
-        © @DateTime.Now.Year Wóz albo Przewóz — współdzielone przejazdy w Twoim mieście.
+﻿<footer class="footer mt-auto py-3 bg-light border-top text-muted small">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+
+        <!-- Lewa strona: Copyright -->
+        <div class="mb-2 mb-md-0">
+            &copy; @DateTime.Now.Year <strong>Wóz albo Przewóz</strong> — współdzielone przejazdy w Twoim mieście.
+        </div>
+
+        <!-- Prawa strona: Linki -->
+        <div>
+            <!-- Link do polityki prywatności -->
+            <a asp-controller="Home" asp-action="Privacy" class="text-decoration-none text-muted me-3">
+                Prywatność
+            </a>
+
+            <!-- link do zgłaszania błędów -->
+            <a asp-controller="Report" asp-action="Create" class="text-decoration-none text-danger fw-bold" title="Napisz do administratora">
+                <i class="bi bi-bug-fill me-1"></i>Zgłoś błąd
+            </a>
+        </div>
+
     </div>
 </footer>

@@ -1,0 +1,54 @@
+﻿@model IEnumerable<projekt_zespołowy.Models.DriverApplication>
+
+<h2>Wnioski o status kierowcy</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Użytkownik</th>
+            <th>PESEL / Wiek</th>
+            <th>Prawo Jazdy</th>
+            <th>Auto</th>
+            <th>Akcja</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @item.User.FirstName @item.User.LastName <br />
+                    <small>@item.User.Email</small>
+                </td>
+                <td>
+                    @item.PESEL <br />
+                    (@item.DateOfBirth.ToShortDateString())
+                </td>
+                <td>@item.DriverLicenseNumber (@item.LicenseCategories)</td>
+                <td>@item.Vehicle.Make @item.Vehicle.Model</td>
+                <td>
+                    <form asp-action="Approve" method="post" class="d-inline">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <button class="btn btn-success btn-sm">Akceptuj</button>
+                    </form>
+
+                    <button class="btn btn-danger btn-sm" onclick="rejectApp(@item.Id)">Odrzuć</button>
+
+                    <form id="rejectForm-@item.Id" asp-action="Reject" method="post" style="display:none;">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <input type="hidden" name="reason" id="reason-@item.Id" />
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<script>
+    function rejectApp(id) {
+        let reason = prompt("Podaj powód odrzucenia:");
+        if (reason) {
+            document.getElementById('reason-' + id).value = reason;
+            document.getElementById('rejectForm-' + id).submit();
+        }
+    }
+</script>

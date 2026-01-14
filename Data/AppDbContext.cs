@@ -21,6 +21,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<CityIncentive> CityIncentives { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Waypoint> Waypoints { get; set; }
+    public DbSet<DriverApplication> DriverApplications { get; set; }
     public DbSet<AppReport> Reports { get; set; }
 
     protected override void OnModelCreating(ModelBuilder model)
@@ -53,7 +54,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 
         model.Entity<Vehicle>()
             .HasOne(v => v.Owner)
-            .WithMany(dp => dp.Vehicles)
+            .WithMany()
             .HasForeignKey(v => v.OwnerId)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -127,6 +128,11 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .WithMany(lp => lp.Waypoints)
             .HasForeignKey(w => w.LocationPointId);
 
+        model.Entity<DriverApplication>()
+            .HasOne(d => d.Vehicle)
+            .WithMany()
+            .HasForeignKey(d => d.VehicleId)
+            .OnDelete(DeleteBehavior.Restrict);
         model.Entity<AppReport>()
             .HasOne(r => r.User)
             .WithMany()

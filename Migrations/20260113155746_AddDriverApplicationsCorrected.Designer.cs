@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace projekt_zespołowy.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260113155746_AddDriverApplicationsCorrected")]
+    partial class AddDriverApplicationsCorrected
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -267,18 +270,6 @@ namespace projekt_zespołowy.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IdDocumentNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("LicenseCategories")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -287,9 +278,6 @@ namespace projekt_zespołowy.Migrations
                         .IsRequired()
                         .HasMaxLength(11)
                         .HasColumnType("nvarchar(11)");
-
-                    b.Property<string>("SecondName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -630,9 +618,6 @@ namespace projekt_zespołowy.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("DriverProfileUserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Make")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -641,7 +626,7 @@ namespace projekt_zespołowy.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("OwnerId")
+                    b.Property<Guid?>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("RegistrationNumber")
@@ -655,8 +640,6 @@ namespace projekt_zespołowy.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DriverProfileUserId");
 
                     b.HasIndex("OwnerId");
 
@@ -878,15 +861,10 @@ namespace projekt_zespołowy.Migrations
 
             modelBuilder.Entity("projekt_zespołowy.Models.Vehicle", b =>
                 {
-                    b.HasOne("projekt_zespołowy.Models.DriverProfile", null)
+                    b.HasOne("projekt_zespołowy.Models.DriverProfile", "Owner")
                         .WithMany("Vehicles")
-                        .HasForeignKey("DriverProfileUserId");
-
-                    b.HasOne("projekt_zespołowy.Models.User", "Owner")
-                        .WithMany()
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Owner");
                 });

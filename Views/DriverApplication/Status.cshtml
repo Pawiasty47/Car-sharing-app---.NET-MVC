@@ -1,0 +1,23 @@
+﻿@model projekt_zespołowy.Models.DriverApplication
+
+<div class="card text-center mt-5">
+    <div class="card-header">Status Twojego Wniosku</div>
+    <div class="card-body">
+        @if (Model.Status == projekt_zespołowy.Models.ApplicationStatus.Pending)
+        {
+            <h3 class="text-warning">⏳ Oczekujący</h3>
+            <p>Twój wniosek jest weryfikowany przez administratora.</p>
+        }
+        else if (Model.Status == projekt_zespołowy.Models.ApplicationStatus.Approved)
+        {
+            <h3 class="text-success">✅ Zaakceptowany</h3>
+            <p>Gratulacje! Jesteś teraz kierowcą.</p>
+        }
+        else
+        {
+            <h3 class="text-danger">❌ Odrzucony</h3>
+            <p>Powód odrzucenia: <strong>@Model.AdminFeedback</strong></p>
+        }
+    </div>
+    <div class="card-footer text-muted">Data złożenia: @Model.ApplicationDate.ToShortDateString()</div>
+</div>

@@ -11,7 +11,7 @@
     </p>
 
     <a class="btn btn-success btn-lg me-2" asp-controller="Rides" asp-action="Index">
-        🔍 Szukaj przejazdu
+        <i class="bi bi-search"></i> Szukaj przejazdu
     </a>
 </section>
 
@@ -36,7 +36,7 @@
 {
     <div class="alert alert-warning text-center container">
         👑 Zalogowany jako <strong>Administrator</strong> —
-        <a asp-controller="Admin" asp-action="Users">Panel admina</a>
+        <a asp-controller="Admin" asp-action="Users" class="alert-link">Panel admina</a>
     </div>
 }
 
@@ -47,11 +47,11 @@
     </div>
 }
 
-else
+@if (!Model.IsDriver && !Model.IsAdmin)
 {
     <div class="alert alert-warning text-center container">
         🚗 Chcesz więcej? —
-        <a asp-controller="DriverProfile" asp-action="Index">Zostań kierowcą!</a>
+        <a asp-controller="DriverProfile" asp-action="Index" class="alert-link">Zostań kierowcą!</a>
     </div>
 }
 
@@ -78,73 +78,80 @@ else
     </div>
 </section>
 
+<!-- FAQ -->
+<section class="container my-5">
+    <h3 class="text-center mb-4 text-success fw-bold">FAQ</h3>
+
+    <div class="accordion shadow-sm" id="faqAccordion">
+
+        <!-- Pytanie 1 -->
+        <div class="accordion-item border-0 border-bottom">
+            <h2 class="accordion-header">
+                <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                    Czy korzystanie z serwisu jest darmowe?
+                </button>
+            </h2>
+            <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                <div class="accordion-body text-muted">
+                    Tak - rejestracja i przeglądanie przejazdów są bezpłatne.
+                </div>
+            </div>
+        </div>
+
+        <!-- Pytanie 2 -->
+        <div class="accordion-item border-0 border-bottom">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                    Jak mogę zostać kierowcą?
+                </button>
+            </h2>
+            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body text-muted">
+                    Wystarczy założyć konto, wejść w profil, kliknąć "Zostań kierowcą" i wypełnić formularz.
+                </div>
+            </div>
+        </div>
+
+        <!-- Pytanie 3 -->
+        <div class="accordion-item border-0">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                    Jak mogę wybrać przejazd?
+                </button>
+            </h2>
+            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body text-muted">
+                    Naciśnij przycisk "Wyszukaj przejazd" w menu lub na stronie głównej i znajdź ofertę, która Ci odpowiada.
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- STYLE -->
 <style>
+    /* Sponsorzy */
     #sponsorsCarousel .carousel-inner img {
         width: 400px;
         height: 300px;
         object-fit: contain;
         margin: 0 auto;
     }
+
+    /* FAQ  */
+    .accordion-button:not(.collapsed) {
+        background-color: #e9f7ef;
+        color: #198754;
+        box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+    }
+
+    .accordion-button:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+
+    .accordion-button:not(.collapsed)::after {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23198754'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    }
 </style>
-
-<!-- FAQ -->
-<section class="container my-5">
-    <h3 class="text-center mb-4">FAQ</h3>
-
-    <div class="accordion" id="faqAccordion">
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#faq1">
-                    Czy korzystanie z serwisu jest darmowe?
-                </button>
-            </h2>
-
-            <div id="faq1"
-                 class="accordion-collapse collapse show">
-                <div class="accordion-body">
-                    Tak - rejestracja i przeglądanie przejazdów są bezpłatne.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="accordion" id="faqAccordion">
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#faq2">
-                    Jak mogę zostać kierowcą?
-                </button>
-            </h2>
-
-            <div id="faq2"
-                 class="accordion-collapse collapse show">
-                <div class="accordion-body">
-                    Wystarczy założyć konto, wejść w profil, kliknąć "Zostań kierowcą" i wypełnić formularz.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="accordion" id="faqAccordion">
-        <div class="accordion-item">
-            <h2 class="accordion-header">
-                <button class="accordion-button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#faq3">
-                    Jak mogę wybrać przejazd?
-                </button>
-            </h2>
-
-            <div id="faq3"
-                 class="accordion-collapse collapse show">
-                <div class="accordion-body">
-                    Naciśnij przycisk "Wyszukaj przejazd" i znajdź czego potrzebujesz.
-                </div>
-            </div>
-        </div>
-    </div>
-</section>

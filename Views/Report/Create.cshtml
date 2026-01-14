@@ -1,0 +1,54 @@
+﻿@using projekt_zespołowy.Models
+@using projekt_zespołowy.Models.ViewModels
+@model ReportViewModel
+
+@{
+    ViewData["Title"] = "Zgłoś błąd";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>Zgłoś problem</h4>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted">
+                    Masz problem z aplikacją? Opisz go poniżej, a administrator się tym zajmie.
+                </p>
+
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label fw-bold"></label>
+                        <select asp-for="Category" class="form-select"
+                                asp-items="Html.GetEnumSelectList<ReportCategory>()">
+                            <option value="">-- Wybierz kategorię --</option>
+                        </select>
+                        <span asp-validation-for="Category" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label fw-bold"></label>
+                        <textarea asp-for="Description" class="form-control" rows="5" placeholder="Opisz błąd..."></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-send-fill me-2"></i> Wyślij
+                        </button>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Anuluj</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

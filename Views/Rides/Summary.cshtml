@@ -1,0 +1,100 @@
+@model projekt_zespo³owy.Models.OfferedRide
+@using projekt_zespo³owy.Models
+@{
+    ViewData["Title"] = "Podsumowanie przejazdu";
+    var bookings = ViewBag.Bookings as List<Booking> ?? new List<Booking>();
+    var totalSeats = bookings.Sum(b => b.SeatsRequested);
+    var totalEarnings = bookings.Sum(b => b.SeatsRequested) * Model.PricePerSeat;
+    var currentUserId = "";
+}
+@inject Microsoft.AspNetCore.Identity.UserManager<projekt_zespo³owy.Models.User> UserManager
+@{
+    var user = await UserManager.GetUserAsync(User);
+    currentUserId = user != null ? user.Id.ToString() : "";
+    var isOwner = currentUserId != null && Model.DriverId.ToString() == currentUserId;
+    var isAdmin = User.IsInRole("Admin");
+    var canComplete = (isOwner || isAdmin) && Model.Status != RideStatus.Completed;
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Podsumowanie przejazdu</h4>
+            <span class="badge bg-light text-primary">@Model.Status.ToString()</span>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h5>Trasa</h5>
+                    <p class="mb-1"><strong>Start:</strong> @Model.StartLocation.City — @Model.StartLocation.Address</p>
+                    <p class="mb-1"><strong>Cel:</strong> @Model.EndLocation.City — @Model.EndLocation.Address</p>
+                </div>
+                <div class="col-md-6">
+                    <h5>Szczegó³y</h5>
+                    <p class="mb-1"><strong>Wyjazd:</strong> @Model.DepartureTime.ToString("dd.MM.yyyy HH:mm")</p>
+                    <p class="mb-1"><strong>Przyjazd:</strong> @(Model.ArrivalTime.HasValue ? Model.ArrivalTime.Value.ToString("dd.MM.yyyy HH:mm") : "-")</p>
+                    <p class="mb-1"><strong>Pojazd:</strong> @Model.Vehicle?.Make @Model.Vehicle?.Model</p>
+                </div>
+            </div>
+
+            <hr />
+
+            <h5>Pasa¿erowie (@bookings.Count)</h5>
+            @if (!bookings.Any())
+            {
+                <p class="text-muted">Brak zapisanych pasa¿erów.</p>
+            }
+            else
+            {
+                <div class="list-group mb-3">
+                    @foreach (var b in bookings)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@b.Passenger?.FirstName @b.Passenger?.LastName</strong>
+                                <div class="small text-muted">@b.Passenger?.Email</div>
+                                @if (!string.IsNullOrEmpty(b.CommentByPassenger))
+                                {
+                                    <div class="fst-italic text-muted small mt-1">"@b.CommentByPassenger"</div>
+                                }
+                            </div>
+                            <span class="badge bg-primary rounded-pill">@b.SeatsRequested</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>£¹cznie miejsc:</strong> @totalSeats</p>
+                    <p class="mb-1"><strong>Cena za miejsce:</strong> @Model.PricePerSeat.ToString("C")</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <h4 class="text-success">@totalEarnings.ToString("C")</h4>
+                    <div class="small text-muted">Szacowany przychód</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Wróæ do szczegó³ów</a>
+
+            @if (canComplete)
+            {
+                <form asp-action="Complete" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Zakoñczyæ przejazd?')">
+                        <i class="bi bi-check2-circle me-1"></i> Zakoñcz przejazd
+                    </button>
+                </form>
+            }
+            else
+            {
+                <button type="button" class="btn btn-secondary" disabled>
+                    <i class="bi bi-stop-circle me-1"></i> Zakoñczyæ mo¿e tylko kierowca
+                </button>
+            }
+        </div>
+    </div>
+</div>

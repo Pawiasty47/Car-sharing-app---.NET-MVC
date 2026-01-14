@@ -2,13 +2,10 @@
 @using Microsoft.AspNetCore.Identity
 @using projekt_zespołowy.Models
 
-@* POPRAWKA: Używamy Twojej klasy 'User', a nie domyślnego 'IdentityUser' *@
 @inject UserManager<User> UserManager
 
 @{
     ViewData["Title"] = "Dostępne przejazdy";
-
-    // Pobieramy ID zalogowanego użytkownika (jako String)
     var currentUserId = UserManager.GetUserId(User);
 }
 
@@ -91,26 +88,15 @@
         <div class="row g-4">
             @foreach (var item in Model)
             {
-                // Obliczenia pomocnicze
                 var seatsAvailable = item.SeatsOffered - item.SeatsTaken;
                 var isFull = seatsAvailable <= 0;
-
-                // 1. Sprawdzamy czy to właściciel (tak jak było wcześniej)
                 var isOwner = currentUserId != null && item.DriverId.ToString() == currentUserId;
-
-                // 2. NOWOŚĆ: Sprawdzamy czy użytkownik to Admin
-                // UWAGA: Upewnij się, że w bazie rola nazywa się dokładnie "Admin" (lub "Administrator")
                 var isAdmin = User.IsInRole("Admin");
-
-                // 3. Łączymy warunki: Pokaż przyciski jeśli to właściciel LUB admin
-                var canEditOrDelete = isOwner || isAdmin;
+                var canEditOrDelete = (isOwner || isAdmin) && item.SeatsTaken == 0;
 
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 shadow-sm border-0 hover-effect">
-
-                        @* ... (Reszta kodu karty bez zmian: nagłówek, body itp.) ... *@
                         <div class="card-header bg-white border-bottom-0 pt-3">
-                            @* ... kod nagłówka ... *@
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="badge bg-primary rounded-pill">
                                     <i class="bi bi-calendar-event me-1"></i>
@@ -123,8 +109,6 @@
                         </div>
 
                         <div class="card-body">
-                            @* ... kod środka karty (trasa, godzina, auto) ... *@
-                            @* (Wklejam skrót, żeby nie zajmować miejsca - tu nic nie zmieniasz) *@
                             <div class="d-flex align-items-center mb-3">
                                 <div class="text-center me-3">
                                     <div class="fw-bold fs-5">@item.DepartureTime.ToString("HH:mm")</div>
@@ -170,7 +154,6 @@
                             </p>
                         </div>
 
-
                         <div class="card-footer bg-light border-top-0 pb-3 pt-0">
                             <div class="d-grid gap-2 d-flex justify-content-end mt-2">
 
@@ -178,18 +161,31 @@
                                     <i class="bi bi-info-circle"></i> Szczegóły
                                 </a>
 
-                                @* ZMIANA TUTAJ: Używamy nowej zmiennej canEditOrDelete *@
+                                @* Pokazuj "Podsumowanie" tylko dla zakończonych przejazdów *@
+                                @if ((isOwner || isAdmin) && item.Status == RideStatus.Completed)
+                                {
+                                    <a asp-action="Summary" asp-route-id="@item.Id" class="btn btn-outline-info btn-sm ms-1">
+                                        <i class="bi bi-file-earmark-text"></i> Podsumowanie
+                                    </a>
+                                }
+
                                 @if (canEditOrDelete)
                                 {
-                                    @* Opcjonalnie: Admin może chcieć tylko usuwać, a nie edytować. 
-                                       Ale zazwyczaj daje się obie opcje. *@
-
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm ms-1">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm">
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm ms-1">
                                         <i class="bi bi-trash"></i>
                                     </a>
+                                }
+                                else if (isOwner || isAdmin)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm ms-1" disabled title="Zablokowane — są już zapisani pasażerowie">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm ms-1" disabled title="Zablokowane — są już zapisani pasażerowie">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 }
                             </div>
                         </div>

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace projekt_zespołowy.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260113232449_AddReportsTable")]
+    [Migration("20260114190027_AddReportsTable")]
     partial class AddReportsTable
     {
         /// <inheritdoc />

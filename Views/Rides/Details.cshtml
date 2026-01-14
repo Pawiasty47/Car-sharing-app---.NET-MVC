@@ -6,21 +6,13 @@
 @{
     ViewData["Title"] = "Szczegóły przejazdu";
 
-    // Pobranie aktualnego użytkownika
     var currentUser = await UserManager.GetUserAsync(User);
-
-    // Sprawdzenie ról: Czy to kierowca tego auta?
     var isDriver = currentUser != null && Model.DriverId == currentUser.Id;
-
-    // Pobranie listy rezerwacji z kontrolera (ViewBag)
     var bookings = ViewBag.Bookings as List<Booking> ?? new List<Booking>();
-
-    // Czy pasażer już tu jest zapisany?
     var myBooking = currentUser != null ? bookings.FirstOrDefault(b => b.PassengerUserId == currentUser.Id) : null;
     var isBooked = myBooking != null;
-
-    // Obliczenie wolnych miejsc
     var seatsAvailable = Model.SeatsOffered - Model.SeatsTaken;
+    var hasBookings = bookings.Any();
 }
 
 <div class="container mt-4">
@@ -116,10 +108,48 @@
 
             @if (isDriver)
             {
-                // --- WIDOK DLA KIEROWCY ---
                 <div class="card border-success shadow-sm">
-                    <div class="card-header bg-success text-white">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Lista Pasażerów</h5>
+                        <div>
+                            @if (!hasBookings)
+                            {
+                                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light me-1" title="Edytuj przejazd">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light" title="Usuń przejazd">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-light me-1" disabled title="Zablokowane — są już zapisani pasażerowie">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-light" disabled title="Zablokowane — są już zapisani pasażerowie">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            }
+
+                            @* Przyciski zakończenia / podsumowania przejazdu dla kierowcy *@
+                            @if (Model.Status != RideStatus.Completed)
+                            {
+                                <form asp-action="Complete" method="post" class="d-inline ms-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-light" onclick="return confirm('Zakończyć przejazd?')"
+                                            title="Zakończ przejazd">
+                                        <i class="bi bi-check2-circle"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <a asp-action="Summary" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light ms-2" title="Podsumowanie przejazdu">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                            }
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         @if (bookings.Any())
@@ -128,18 +158,28 @@
                                 @foreach (var b in bookings)
                                 {
                                     <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <h6 class="mb-0 fw-bold">@b.Passenger.FirstName @b.Passenger.LastName</h6>
-                                                <p class="mb-1 text-muted small">
-                                                    <i class="bi bi-telephone me-1"></i> @(b.Passenger.PhoneNumber ?? "Brak telefonu")
-                                                </p>
+                                        <div class="row align-items-center g-3">
+                                            <div class="col-auto">
+                                                <span class="badge bg-primary text-white rounded-pill">
+                                                    @b.SeatsRequested
+                                                </span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-0">
+                                                        @b.Passenger?.FirstName @b.Passenger?.LastName
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        @b.CreatedAt.ToString("dd.MM.yyyy")
+                                                    </small>
+                                                </div>
                                                 @if (!string.IsNullOrEmpty(b.CommentByPassenger))
                                                 {
-                                                    <small class="fst-italic text-primary">"@b.CommentByPassenger"</small>
+                                                    <p class="mb-0 fst-italic text-muted">
+                                                        "@b.CommentByPassenger"
+                                                    </p>
                                                 }
                                             </div>
-                                            <span class="badge bg-primary rounded-pill">@b.SeatsRequested msc.</span>
                                         </div>
                                     </div>
                                 }
@@ -147,20 +187,15 @@
                         }
                         else
                         {
-                            <div class="text-center p-4 text-muted">
-                                <i class="bi bi-person-slash fs-1"></i>
-                                <p class="mt-2 mb-0">Nikt jeszcze nie zarezerwował miejsca.</p>
+                            <div class="p-3 text-center text-muted">
+                                Brak pasażerów jeszcze
                             </div>
                         }
-                    </div>
-                    <div class="card-footer text-muted small text-center">
-                        Zajęte miejsca: @Model.SeatsTaken / @Model.SeatsOffered
                     </div>
                 </div>
             }
             else
             {
-                // --- WIDOK DLA PASAŻERA ---
                 <div class="card shadow-sm sticky-top" style="top: 20px; z-index: 1;">
                     <div class="card-body text-center">
                         <h5 class="text-uppercase text-muted small fw-bold mb-3">Dostępność miejsc</h5>
@@ -171,7 +206,7 @@
                                 <i class="bi bi-ticket-perforated-fill fs-1 d-block mb-2"></i>
                                 <h4 class="alert-heading">Rezerwacja potwierdzona!</h4>
                                 <p class="mb-0">Twoje miejsce jest zarezerwowane.</p>
-                                <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-success mt-2">Zobacz bilet</a>
+                                <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-success mt-2">Zobacz rezerwacje</a>
                             </div>
                         }
                         else if (seatsAvailable <= 0)
@@ -190,6 +225,7 @@
                             @if (currentUser != null)
                             {
                                 <form asp-controller="Booking" asp-action="Create" method="post">
+                                    @Html.AntiForgeryToken()
                                     <input type="hidden" name="rideId" value="@Model.Id" />
 
                                     <div class="mb-3 text-start">
@@ -197,7 +233,7 @@
                                         <select name="seats" class="form-select">
                                             @for (int i = 1; i <= seatsAvailable && i <= 4; i++)
                                             {
-                                                <option value="@i">@i osoba@(i > 1 ? "y" : "")</option>
+                                                <option value="@i">@i @((i == 1) ? "osoba" : (i >= 2 && i <= 4) ? "osoby" : "osób")</option>
                                             }
                                         </select>
                                     </div>

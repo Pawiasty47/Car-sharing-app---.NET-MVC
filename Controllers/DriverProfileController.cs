@@ -41,7 +41,8 @@ namespace projekt_zespołowy.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return RedirectToAction("Index");
+            // Wyraźnie przekierowujemy do Index akcji tego kontrolera
+            return RedirectToAction(nameof(Index), "DriverProfile");
         }
 
         public async Task<IActionResult> Index()
@@ -52,7 +53,7 @@ namespace projekt_zespołowy.Controllers
                 .FirstOrDefaultAsync(d => d.UserId == user.Id);
 
             if (profile == null)
-                return RedirectToAction("BecomeDriver");
+                return RedirectToAction(nameof(BecomeDriver));
 
             return View(profile);
         }

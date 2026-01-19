@@ -20,7 +20,6 @@ namespace projekt_zespołowy.Controllers
         }
 
         // GET: Vehicle
-        // ZMIANA: Wyświetla TYLKO samochody zalogowanego użytkownika (chyba że jest Adminem)
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -30,34 +29,27 @@ namespace projekt_zespołowy.Controllers
 
             if (User.IsInRole("Admin"))
             {
-                // Admin widzi wszystko
                 vehicles = await _context.Vehicles
                     .Include(v => v.Owner)
                     .ToListAsync();
             }
             else
             {
-                // Zwykły użytkownik widzi TYLKO swoje
                 vehicles = await _context.Vehicles
                     .Include(v => v.Owner)
-                    .Where(v => v.OwnerId == user.Id) // <--- FILTROWANIE
+                    .Where(v => v.OwnerId == user.Id)
                     .ToListAsync();
             }
 
-            // Ustawiamy flagę, żeby widok wiedział, czy pokazać przyciski edycji
-            // (Dla właściciela zawsze true w tym widoku)
             ViewBag.IsMyVehiclesMode = true;
-
             return View(vehicles);
         }
 
-        // Ta metoda jest teraz w sumie taka sama jak Index, ale możemy ją zostawić dla kompatybilności
         public async Task<IActionResult> MyVehicles()
         {
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: Vehicle/Details/5
         public async Task<IActionResult> Details(Guid id)
         {
             var v = await _context.Vehicles
@@ -76,7 +68,7 @@ namespace projekt_zespołowy.Controllers
         }
 
         // POST: Vehicle/Create
-        // ZMIANA: Automatyczne przypisanie właściciela
+        // Tworzy tylko pojazd — bez nadawania roli i bez tworzenia DriverProfile
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(AddVehicleViewModel vehicle)
@@ -84,10 +76,7 @@ namespace projekt_zespołowy.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            // 1. Automatycznie przypisujemy OwnerId do zalogowanego użytkownika
             var ownerId = user.Id;
-
-            // Usuwamy błędy walidacji dla OwnerId, bo my je ustawiamy
             ModelState.Remove("OwnerId");
 
             if (!ModelState.IsValid)
@@ -102,9 +91,9 @@ namespace projekt_zespołowy.Controllers
                 Model = vehicle.Model,
                 RegistrationNumber = vehicle.RegistrationNumber,
                 SeatsTotal = vehicle.SeatsTotal,
-                SeatsAvailable = vehicle.SeatsTotal - 1, // Zakładamy, że kierowca zajmuje 1 miejsce
+                SeatsAvailable = vehicle.SeatsTotal - 1,
                 Color = vehicle.Color,
-                OwnerId = ownerId // <--- PRZYPISANIE
+                OwnerId = ownerId
             };
 
             _context.Vehicles.Add(v);
@@ -114,15 +103,13 @@ namespace projekt_zespołowy.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Vehicle/Edit/5
+        // pozostałe akcje bez zmian...
         public async Task<IActionResult> Edit(Guid id)
         {
             var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
             var user = await _userManager.GetUserAsync(User);
-
-            // ZABEZPIECZENIE: Nie pozwalamy edytować cudzych aut (chyba że Admin)
             if (!User.IsInRole("Admin") && v.OwnerId != user.Id)
             {
                 return Forbid();
@@ -141,7 +128,6 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // POST: Vehicle/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Guid id, AddVehicleViewModel model)
@@ -166,20 +152,17 @@ namespace projekt_zespołowy.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Vehicle/Delete/5
         public async Task<IActionResult> Delete(Guid id)
         {
             var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
-            // Zabezpieczenie podglądu usuwania
             var user = await _userManager.GetUserAsync(User);
             if (!User.IsInRole("Admin") && v.OwnerId != user.Id) return Forbid();
 
             return View(v);
         }
 
-        // POST: Vehicle/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
@@ -190,7 +173,6 @@ namespace projekt_zespołowy.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (!User.IsInRole("Admin") && vehicle.OwnerId != user.Id) return Forbid();
 
-            // Najpierw usuwamy oferty przejazdów powiązane z tym autem
             var rides = _context.OfferedRides.Where(r => r.VehicleId == id);
             _context.OfferedRides.RemoveRange(rides);
 

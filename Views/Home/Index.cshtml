@@ -47,11 +47,11 @@
     </div>
 }
 
-@if (!Model.IsDriver && !Model.IsAdmin)
+@if (!User.IsInRole("Driver") && !User.IsInRole("Admin"))
 {
     <div class="alert alert-warning text-center container">
         🚗 Chcesz więcej? —
-        <a asp-controller="DriverProfile" asp-action="Index" class="alert-link">Zostań kierowcą!</a>
+        <a asp-controller="DriverApplication" asp-action="Index" class="alert-link">Zostań kierowcą!</a>
     </div>
 }
 

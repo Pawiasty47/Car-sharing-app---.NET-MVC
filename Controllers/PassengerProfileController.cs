@@ -39,6 +39,11 @@ namespace projekt_zespołowy.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            // jeśli jest kierowcą, pobierz profil kierowcy żeby wypełnić ocenę kierowcy
+            var driverProfile = isDriver
+                ? await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == user.Id)
+                : null;
+
             var model = new PassengerProfileViewModel
             {
                 FirstName = user.FirstName,
@@ -54,7 +59,11 @@ namespace projekt_zespołowy.Controllers
                 AcceptsPets = profile.AcceptsPets,
                 AcceptsEating = profile.AcceptsEating,
 
-                IsDriver = isDriver
+                IsDriver = isDriver,
+
+                // nowe pola ocen
+                PassengerRating = profile.Rating,
+                DriverRating = driverProfile?.Rating
             };
 
             return View(model);

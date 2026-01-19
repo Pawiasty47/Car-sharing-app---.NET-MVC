@@ -37,12 +37,6 @@ namespace projekt_zespołowy.Controllers
 
             var vehicles = await _context.Vehicles.Where(v => v.OwnerId == user.Id).ToListAsync();
 
-            if (!vehicles.Any())
-            {
-                TempData["Error"] = "Musisz dodać najpierw samochód, aby zostać kierowcą!";
-                return RedirectToAction("Create", "Vehicle");
-            }
-
             var model = new DriverApplicationViewModel
             {
                 // Ustawiamy domyślną datę: Dzisiaj minus 18 lat

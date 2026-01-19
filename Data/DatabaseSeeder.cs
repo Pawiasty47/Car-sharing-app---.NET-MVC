@@ -62,7 +62,7 @@ namespace projekt_zespołowy
                         db.PassengerProfiles.Add(new PassengerProfile
                         {
                             User = adminUser,
-                            Rating = 5.0,
+                            Rating = 0.0, // zmienione z 5.0 na 0.0
                             CompletedBookingsCount = 0,
                             PrefersNonSmoking = true,
                             PrefersQuietRide = true
@@ -77,7 +77,7 @@ namespace projekt_zespołowy
                             UserId = adminUser.Id,
                             DrivingLicenseImageUrl = "admin_placeholder.jpg",
                             CompletedRidesCount = 0,
-                            Rating = 5.0
+                            Rating = 0.0 // zmienione z 5.0 na 0.0
                         });
                     }
 
@@ -113,7 +113,7 @@ namespace projekt_zespołowy
                     if (r.Succeeded)
                     {
                         await userManager.AddToRoleAsync(user, "Passenger");
-                        db.PassengerProfiles.Add(new PassengerProfile { User = user, Rating = 5.0, CompletedBookingsCount = 0 });
+                        db.PassengerProfiles.Add(new PassengerProfile { User = user, Rating = 0.0, CompletedBookingsCount = 0 }); // zmienione z 5.0 na 0.0
                     }
                 }
                 await db.SaveChangesAsync();
@@ -219,6 +219,21 @@ namespace projekt_zespołowy
                 }
 
                 db.OfferedRides.AddRange(rides);
+                await db.SaveChangesAsync();
+            }
+
+            // Napraw rekordy zasiane wcześniej: z 5.0 -> 0.0
+            var passengersToFix = await db.PassengerProfiles.Where(p => p.Rating == 5.0).ToListAsync();
+            if (passengersToFix.Any())
+            {
+                foreach (var p in passengersToFix) p.Rating = 0.0;
+                await db.SaveChangesAsync();
+            }
+
+            var driversToFix = await db.DriverProfiles.Where(d => d.Rating == 5.0).ToListAsync();
+            if (driversToFix.Any())
+            {
+                foreach (var d in driversToFix) d.Rating = 0.0;
                 await db.SaveChangesAsync();
             }
         }

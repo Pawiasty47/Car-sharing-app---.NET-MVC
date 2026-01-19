@@ -31,6 +31,57 @@
                     <h2 class="fw-bold">@Model.FirstName @Model.LastName</h2>
                     <p class="text-muted fs-5">@Model.Email</p>
                     <p class="fs-5">@(Model.PhoneNumber ?? "Brak telefonu")</p>
+
+                    @* Sekcja ocen: ukryta dla kont administratora *@
+                    @if (!User.IsInRole("Admin"))
+                    {
+                        <div class="mt-3">
+                            @if (Model.IsDriver)
+                            {
+                                <div class="d-flex gap-2 align-items-center">
+                                    <span class="badge bg-warning text-dark p-2">
+                                        Ocena jako kierowca:
+                                        @if (Model.DriverRating.HasValue && Model.DriverRating.Value > 0)
+                                        {
+                                            <strong>★ @Model.DriverRating.Value.ToString("0.0") / 5</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong>Brak ocen</strong>
+                                        }
+                                    </span>
+
+                                    <span class="badge bg-info text-white p-2">
+                                        Ocena jako pasażer:
+                                        @if (Model.PassengerRating > 0)
+                                        {
+                                            <strong>★ @Model.PassengerRating.ToString("0.0") / 5</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong>Brak ocen</strong>
+                                        }
+                                    </span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div>
+                                    <span class="badge bg-info text-white p-2">
+                                        Ocena:
+                                        @if (Model.PassengerRating > 0)
+                                        {
+                                            <strong>★ @Model.PassengerRating.ToString("0.0") / 5</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong>Brak ocen</strong>
+                                        }
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
 
@@ -67,10 +118,12 @@
                     ✏️ Edytuj profil
                 </a>
 
-                @if (!Model.IsDriver)
+                @* Jeśli użytkownik NIE jest w roli Driver -> przekieruj do formularza wniosku o zostanie kierowcą.
+                   Jeśli jest kierowcą -> pokaż przycisk do profilu kierowcy. *@
+                @if (!User.IsInRole("Driver"))
                 {
-                    <a asp-controller="DriverProfile"
-                       asp-action="BecomeDriver"
+                    <a asp-controller="DriverApplication"
+                       asp-action="Index"
                        class="btn btn-warning btn-lg">
                         🚗 Zostań kierowcą
                     </a>

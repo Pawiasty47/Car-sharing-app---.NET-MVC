@@ -5,116 +5,76 @@
 }
 
 <div class="container mt-4">
-    <h2 class="mb-4"><i class="bi bi-ticket-perforated-fill me-2 text-primary"></i>Moje rezerwacje</h2>
+    <h2>Moje rezerwacje</h2>
 
-    @* Zabezpieczenie: Sprawdzamy czy Model nie jest nullem ORAZ czy ma elementy *@
-    @if (Model == null || !Model.Any())
+    @if (TempData["SuccessMessage"] != null)
     {
-        <div class="alert alert-info text-center p-5">
-            <i class="bi bi-calendar-x fs-1"></i>
-            <h4 class="mt-3">Nie masz jeszcze żadnych rezerwacji.</h4>
-            <p>Szukasz transportu?</p>
-            <a asp-controller="Rides" asp-action="Index" class="btn btn-primary">Znajdź przejazd</a>
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            Nie masz jeszcze żadnych rezerwacji.
+            <a asp-controller="Rides" asp-action="Index" class="alert-link">Znajdź przejazd</a>.
         </div>
     }
     else
     {
-        <div class="row g-4">
-            @foreach (var item in Model)
-            {
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-header text-white @(item.Status == projekt_zespołowy.Models.BookingStatus.Confirmed ? "bg-success" : "bg-secondary")">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-bold">
-                                    @if (item.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
-                                    {
-                                        <span>POTWIERDZONA</span>
-                                    }
-                                    else
-                                    {
-                                        <span>@item.Status.ToString().ToUpper()</span>
-                                    }
-                                </span>
-                                <small>@item.CreatedAt.ToString("dd.MM.yyyy")</small>
-                            </div>
-                        </div>
-
-                        <div class="card-body">
-                            @* ZABEZPIECZENIE: Używamy ?. i ?? aby uniknąć błędu jeśli Ride jest null *@
-                            <h5 class="card-title text-center mb-3">
-                                @(item.Ride?.StartLocation?.City ?? "Brak danych")
-                                <i class="bi bi-arrow-right mx-2 text-muted"></i>
-                                @(item.Ride?.EndLocation?.City ?? "Brak danych")
-                            </h5>
-
-                            <ul class="list-unstyled">
-                                <li class="mb-2">
-                                    <i class="bi bi-calendar-event me-2 text-primary"></i>
-                                    <strong>Data:</strong>
-                                    @(item.Ride?.DepartureTime.ToString("dd.MM.yyyy HH:mm") ?? "---")
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-people me-2 text-primary"></i>
-                                    <strong>Miejsca:</strong> @item.SeatsRequested
-                                </li>
-                                <li class="mb-2">
-                                    <i class="bi bi-cash-coin me-2 text-primary"></i>
-                                    <strong>Cena:</strong>
-                                    @if (item.Ride != null)
-                                    {
-                                        @((item.Ride.PricePerSeat * item.SeatsRequested).ToString("C"))
-                                    }
-                                    else
-                                    {
-
-                                        <span>---</span>
-                                    }
-                                </li>
-
-                                @* ZABEZPIECZENIE: Sprawdzamy czy Driver i User istnieją *@
-                                @if (item.Ride?.Driver?.User != null)
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Trasa</th>
+                        <th>Data wyjazdu</th>
+                        <th>Kierowca</th>
+                        <th>Status rezerwacji</th>
+                        <th>Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                @* Dostęp do danych przejazdu poprzez nawigację .Ride *@
+                                <strong>@item.Ride.StartLocation.City</strong>
+                                <i class="bi bi-arrow-right mx-1"></i>
+                                <strong>@item.Ride.EndLocation.City</strong>
+                            </td>
+                            <td>
+                                @item.Ride.DepartureTime.ToString("dd.MM.yyyy HH:mm")
+                            </td>
+                            <td>
+                                @item.Ride.Driver.User.FirstName @item.Ride.Driver.User.LastName
+                            </td>
+                            <td>
+                                @if (item.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
                                 {
-                                    <li class="mb-2">
-                                        <i class="bi bi-person-badge me-2 text-primary"></i>
-                                        <strong>Kierowca:</strong> @item.Ride.Driver.User.FirstName
-                                    </li>
+                                    <span class="badge bg-success">Zatwierdzona</span>
                                 }
-                            </ul>
-
-                            @if (!string.IsNullOrEmpty(item.CommentByPassenger))
-                            {
-                                <div class="alert alert-light border p-2 small fst-italic">
-                                    Twoja uwaga: "@item.CommentByPassenger"
-                                </div>
-                            }
-                        </div>
-
-                        <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
-                            @if (item.Ride != null)
-                            {
-                                <a asp-controller="Rides" asp-action="Details" asp-route-id="@item.RideId" class="btn btn-outline-primary btn-sm">
-                                    Szczegóły trasy
+                                else if (item.Status == projekt_zespołowy.Models.BookingStatus.Pending)
+                                {
+                                    <span class="badge bg-warning text-dark">Oczekująca</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@item.Status</span>
+                                }
+                            </td>
+                            <td>
+                                @* Ten przycisk przeniesie Cię do widoku Summary, gdzie można ocenić kierowcę *@
+                                <a asp-controller="Rides"
+                                   asp-action="Summary"
+                                   asp-route-id="@item.RideId"
+                                   class="btn btn-primary btn-sm">
+                                    Szczegóły / Oceń
                                 </a>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">Przejazd usunięty</span>
-                            }
-
-                            @if (item.Status != projekt_zespołowy.Models.BookingStatus.Cancelled && item.Status != projekt_zespołowy.Models.BookingStatus.Completed)
-                            {
-                                <form asp-action="Cancel" method="post" onsubmit="return confirm('Czy na pewno chcesz anulować rezerwację?');">
-                                    <input type="hidden" name="id" value="@item.Id" />
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">
-                                        Anuluj
-                                    </button>
-                                </form>
-                            }
-                        </div>
-                    </div>
-                </div>
-            }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     }
 </div>

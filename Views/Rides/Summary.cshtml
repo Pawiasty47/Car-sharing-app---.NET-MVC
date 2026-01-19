@@ -1,100 +1,168 @@
 @model projekt_zespo³owy.Models.OfferedRide
 @using projekt_zespo³owy.Models
+@inject Microsoft.AspNetCore.Identity.UserManager<User> UserManager
+
 @{
     ViewData["Title"] = "Podsumowanie przejazdu";
     var bookings = ViewBag.Bookings as List<Booking> ?? new List<Booking>();
-    var totalSeats = bookings.Sum(b => b.SeatsRequested);
-    var totalEarnings = bookings.Sum(b => b.SeatsRequested) * Model.PricePerSeat;
-    var currentUserId = "";
-}
-@inject Microsoft.AspNetCore.Identity.UserManager<projekt_zespo³owy.Models.User> UserManager
-@{
-    var user = await UserManager.GetUserAsync(User);
-    currentUserId = user != null ? user.Id.ToString() : "";
-    var isOwner = currentUserId != null && Model.DriverId.ToString() == currentUserId;
-    var isAdmin = User.IsInRole("Admin");
-    var canComplete = (isOwner || isAdmin) && Model.Status != RideStatus.Completed;
+    var myReviews = ViewBag.MyReviews as System.Collections.Generic.Dictionary<Guid, Review> ?? new System.Collections.Generic.Dictionary<Guid, Review>();
+    var currentUser = await UserManager.GetUserAsync(User);
+    var isDriver = currentUser != null && Model.DriverId == currentUser.Id;
+    var isPassenger = currentUser != null && bookings.Any(b => b.PassengerUserId == currentUser.Id);
 }
 
 <div class="container mt-4">
-    <div class="card shadow-sm">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+
+    <div class="card shadow-sm mb-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Podsumowanie przejazdu</h4>
-            <span class="badge bg-light text-primary">@Model.Status.ToString()</span>
+            <h4 class="mb-0">Podsumowanie przejazdu</h4>
+            @if (Model.Status == RideStatus.Completed)
+            {
+                <span class="badge bg-success">Zakoñczony</span>
+            }
         </div>
         <div class="card-body">
-            <div class="row mb-3">
+            <div class="row">
                 <div class="col-md-6">
-                    <h5>Trasa</h5>
-                    <p class="mb-1"><strong>Start:</strong> @Model.StartLocation.City — @Model.StartLocation.Address</p>
-                    <p class="mb-1"><strong>Cel:</strong> @Model.EndLocation.City — @Model.EndLocation.Address</p>
+                    <p><strong>Trasa:</strong> @Model.StartLocation.City ? @Model.EndLocation.City</p>
+                    <p><strong>Data:</strong> @Model.DepartureTime.ToString("dd.MM.yyyy HH:mm")</p>
                 </div>
-                <div class="col-md-6">
-                    <h5>Szczegó³y</h5>
-                    <p class="mb-1"><strong>Wyjazd:</strong> @Model.DepartureTime.ToString("dd.MM.yyyy HH:mm")</p>
-                    <p class="mb-1"><strong>Przyjazd:</strong> @(Model.ArrivalTime.HasValue ? Model.ArrivalTime.Value.ToString("dd.MM.yyyy HH:mm") : "-")</p>
-                    <p class="mb-1"><strong>Pojazd:</strong> @Model.Vehicle?.Make @Model.Vehicle?.Model</p>
+                <div class="col-md-6 text-end">
+                    <p><strong>Pojazd:</strong> @Model.Vehicle?.Make @Model.Vehicle?.Model</p>
+                </div>
+            </div>
+
+            <hr />
+
+            <h5>Kierowca</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <strong>@Model.Driver?.User?.FirstName @Model.Driver?.User?.LastName</strong>
+                    <div class="small text-muted">@Model.Driver?.User?.Email</div>
+                    <div class="small text-warning">
+                        <i class="bi bi-star-fill text-warning"></i>
+                        @Model.Driver?.Rating / 5.0
+                    </div>
+                </div>
+
+                <div class="text-end" style="min-width:300px;">
+                    @if (isPassenger && Model.Status == RideStatus.Completed)
+                    {
+                        if (myReviews.ContainsKey(Model.DriverId))
+                        {
+                            <div class="text-success small">
+                                Oceni³eœ kierowcê:
+                                <i class="bi bi-star-fill text-warning"></i>
+                                <strong>@myReviews[Model.DriverId].Rating</strong>
+                                @if (!string.IsNullOrWhiteSpace(myReviews[Model.DriverId].Comment))
+                                {
+                                    <div class="fst-italic small text-muted">@myReviews[Model.DriverId].Comment</div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <form asp-action="RateDriver" method="post" class="text-end">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="rideId" value="@Model.Id" />
+                                <div class="d-flex gap-2 align-items-center">
+                                    <select name="rating" class="form-select form-select-sm" style="width:90px;">
+                                        <option value="5">5</option>
+                                        <option value="4">4</option>
+                                        <option value="3">3</option>
+                                        <option value="2">2</option>
+                                        <option value="1">1</option>
+                                    </select>
+                                    <input name="comment" class="form-control form-control-sm" placeholder="Opcjonalny komentarz" />
+                                    <button type="submit" class="btn btn-sm btn-primary">Oceñ kierowcê</button>
+                                </div>
+                            </form>
+                        }
+                    }
+                    else if (!isPassenger)
+                    {
+                        <small class="text-muted">Tylko zapisani pasa¿erowie mog¹ oceniæ kierowcê.</small>
+                    }
+                    else
+                    {
+                        <small class="text-muted">Oceny dostêpne po zakoñczeniu przejazdu</small>
+                    }
                 </div>
             </div>
 
             <hr />
 
             <h5>Pasa¿erowie (@bookings.Count)</h5>
+
             @if (!bookings.Any())
             {
-                <p class="text-muted">Brak zapisanych pasa¿erów.</p>
+                <div class="text-muted">Brak zapisanych pasa¿erów.</div>
             }
             else
             {
-                <div class="list-group mb-3">
+                <div class="list-group">
                     @foreach (var b in bookings)
                     {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="list-group-item d-flex justify-content-between align-items-start">
                             <div>
                                 <strong>@b.Passenger?.FirstName @b.Passenger?.LastName</strong>
                                 <div class="small text-muted">@b.Passenger?.Email</div>
-                                @if (!string.IsNullOrEmpty(b.CommentByPassenger))
+                            </div>
+
+                            <div class="text-end" style="min-width:300px;">
+                                @if (isDriver && Model.Status == RideStatus.Completed)
                                 {
-                                    <div class="fst-italic text-muted small mt-1">"@b.CommentByPassenger"</div>
+                                    if (myReviews.ContainsKey(b.PassengerUserId))
+                                    {
+                                        <div class="text-success small">
+                                            Oceni³eœ:
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <strong>@myReviews[b.PassengerUserId].Rating</strong>
+                                            @if (!string.IsNullOrWhiteSpace(myReviews[b.PassengerUserId].Comment))
+                                            {
+                                                <div class="fst-italic small text-muted">@myReviews[b.PassengerUserId].Comment</div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="RatePassenger" method="post" class="text-end">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="rideId" value="@Model.Id" />
+                                            <input type="hidden" name="passengerUserId" value="@b.PassengerUserId" />
+                                            <div class="d-flex gap-2 align-items-center">
+                                                <select name="rating" class="form-select form-select-sm" style="width:90px;">
+                                                    <option value="5">5</option>
+                                                    <option value="4">4</option>
+                                                    <option value="3">3</option>
+                                                    <option value="2">2</option>
+                                                    <option value="1">1</option>
+                                                </select>
+                                                <input name="comment" class="form-control form-control-sm" placeholder="Opcjonalny komentarz" />
+                                                <button type="submit" class="btn btn-sm btn-primary">Oceñ</button>
+                                            </div>
+                                        </form>
+                                    }
+                                }
+                                else
+                                {
+                                    <small class="text-muted">Oceny dostêpne po zakoñczeniu przejazdu</small>
                                 }
                             </div>
-                            <span class="badge bg-primary rounded-pill">@b.SeatsRequested</span>
                         </div>
                     }
                 </div>
             }
-
-            <div class="row">
-                <div class="col-md-6">
-                    <p class="mb-1"><strong>£¹cznie miejsc:</strong> @totalSeats</p>
-                    <p class="mb-1"><strong>Cena za miejsce:</strong> @Model.PricePerSeat.ToString("C")</p>
-                </div>
-                <div class="col-md-6 text-end">
-                    <h4 class="text-success">@totalEarnings.ToString("C")</h4>
-                    <div class="small text-muted">Szacowany przychód</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Wróæ do szczegó³ów</a>
-
-            @if (canComplete)
-            {
-                <form asp-action="Complete" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@Model.Id" />
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Zakoñczyæ przejazd?')">
-                        <i class="bi bi-check2-circle me-1"></i> Zakoñcz przejazd
-                    </button>
-                </form>
-            }
-            else
-            {
-                <button type="button" class="btn btn-secondary" disabled>
-                    <i class="bi bi-stop-circle me-1"></i> Zakoñczyæ mo¿e tylko kierowca
-                </button>
-            }
         </div>
     </div>
+
+    <a asp-action="Index" asp-controller="Rides" class="btn btn-outline-secondary">Wróæ do listy</a>
 </div>

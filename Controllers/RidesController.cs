@@ -126,6 +126,15 @@ namespace projekt_zespołowy.Controllers
 
             ViewBag.Bookings = bookings;
 
+            // DODANE: pobieramy profile pasażerów aby mieć ich oceny i przekazujemy do widoku
+            var passengerUserIds = bookings.Select(b => b.PassengerUserId).Distinct().ToList();
+            var passengerProfiles = await _context.PassengerProfiles
+                .Where(p => passengerUserIds.Contains(p.UserId))
+                .ToListAsync();
+
+            var ratingsDict = passengerProfiles.ToDictionary(p => p.UserId, p => p.Rating);
+            ViewBag.PassengerRatings = ratingsDict;
+
             return View(ride);
         }
 
@@ -404,20 +413,110 @@ namespace projekt_zespołowy.Controllers
 
             if (ride == null) return NotFound();
 
-            var userId = _userManager.GetUserId(User);
-            if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
-            {
-                return Forbid();
-            }
+            var currentUser = await _userManager.GetUserAsync(User);
+            var userId = currentUser != null ? currentUser.Id.ToString() : null;
+
+            // allow driver, admin or a passenger who had a booking
+            var isDriver = currentUser != null && ride.DriverId == currentUser.Id;
+            var isAdmin = User.IsInRole("Admin");
 
             var bookings = await _context.Bookings
                 .Include(b => b.Passenger)
                 .Where(b => b.RideId == id)
                 .ToListAsync();
 
+            var isPassenger = currentUser != null && bookings.Any(b => b.PassengerUserId == currentUser.Id);
+
+            if (!isAdmin && !isDriver && !isPassenger)
+            {
+                return Forbid();
+            }
+
             ViewBag.Bookings = bookings;
 
-            return View(ride);
+            // Pobierz recenzje wystawione przez aktualnego użytkownika dla tego przejazdu
+            var myReviews = new Dictionary<Guid, Review>();
+            if (currentUser != null)
+            {
+                var reviews = await _context.Reviews
+                    .Where(r => r.RideId == id && r.FromUserId == currentUser.Id)
+                    .ToListAsync();
+
+                myReviews = reviews.ToDictionary(r => r.ToUserId, r => r);
+            }
+
+            ViewBag.MyReviews = myReviews;
+            ViewBag.IsPassenger = isPassenger;
+            ViewBag.IsDriver = isDriver;
+
+            return View("Summary", ride);
+        }
+
+        // POST: kierowca ocenia pasażera
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RatePassenger(Guid rideId, Guid passengerUserId, int rating, string? comment)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var ride = await _context.OfferedRides.FirstOrDefaultAsync(r => r.Id == rideId);
+            if (ride == null) return NotFound();
+
+            // tylko kierowca (właściciel przejazdu) może oceniać pasażerów tego przejazdu
+            if (!User.IsInRole("Admin") && ride.DriverId != currentUser.Id)
+                return Forbid();
+
+            // dopuszczamy ocenianie tylko po zakończeniu przejazdu
+            if (ride.Status != RideStatus.Completed)
+            {
+                TempData["ErrorMessage"] = "Oceny można wystawić dopiero po zakończeniu przejazdu.";
+                return RedirectToAction("Summary", new { id = rideId });
+            }
+
+            // sprawdź, czy pasażer był zapisany na ten przejazd
+            var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.RideId == rideId && b.PassengerUserId == passengerUserId);
+            if (booking == null)
+            {
+                TempData["ErrorMessage"] = "Ten użytkownik nie był pasażerem tego przejazdu.";
+                return RedirectToAction("Summary", new { id = rideId });
+            }
+
+            // zapobiegaj wielokrotnemu ocenianiu tego samego pasażera przez tego samego użytkownika dla tego przejazdu
+            var exists = await _context.Reviews.FirstOrDefaultAsync(r =>
+                r.RideId == rideId && r.FromUserId == currentUser.Id && r.ToUserId == passengerUserId);
+
+            if (exists != null)
+            {
+                TempData["ErrorMessage"] = "Już oceniłeś tego pasażera dla tego przejazdu.";
+                return RedirectToAction("Summary", new { id = rideId });
+            }
+
+            var review = new Review
+            {
+                FromUserId = currentUser.Id,
+                ToUserId = passengerUserId,
+                Rating = Math.Clamp(rating, 1, 5),
+                Comment = comment ?? string.Empty,
+                CreateAt = DateTime.UtcNow,
+                RideId = rideId
+            };
+
+            _context.Reviews.Add(review);
+            await _context.SaveChangesAsync();
+
+            // Zaktualizuj średnią ocenę pasażera (PassengerProfile.Rating)
+            var passengerProfile = await _context.PassengerProfiles.FirstOrDefaultAsync(p => p.UserId == passengerUserId);
+            if (passengerProfile != null)
+            {
+                var all = await _context.Reviews.Where(r => r.ToUserId == passengerUserId).ToListAsync();
+                passengerProfile.Rating = all.Any() ? all.Average(r => r.Rating) : 0.0;
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["SuccessMessage"] = "Ocena zapisana.";
+            return RedirectToAction("Summary", new { id = rideId });
         }
 
         // Complete (POST) - zakończenie przejazdu
@@ -523,6 +622,69 @@ namespace projekt_zespołowy.Controllers
             TempData["SuccessMessage"] = "Przejazd został usunięty!";
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // POST: ocena kierowcy przez pasażera
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RateDriver(Guid rideId, int rating, string? comment)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var ride = await _context.OfferedRides.FirstOrDefaultAsync(r => r.Id == rideId);
+            if (ride == null) return NotFound();
+
+            // tylko pasażerowie zapisani na przejazd lub admin mogą oceniać kierowcę
+            var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.RideId == rideId && b.PassengerUserId == currentUser.Id);
+            if (booking == null && !User.IsInRole("Admin"))
+            {
+                TempData["ErrorMessage"] = "Nie możesz ocenić tego kierowcy — nie byłeś pasażerem tego przejazdu.";
+                return RedirectToAction("Summary", new { id = rideId });
+            }
+
+            // dopuszczamy ocenianie tylko po zakończeniu przejazdu
+            if (ride.Status != RideStatus.Completed)
+            {
+                TempData["ErrorMessage"] = "Oceny można wystawić dopiero po zakończeniu przejazdu.";
+                return RedirectToAction("Summary", new { id = rideId });
+            }
+
+            // zapobiegaj wielokrotnemu ocenianiu tego samego kierowcy przez tego samego pasażera dla tego przejazdu
+            var exists = await _context.Reviews.FirstOrDefaultAsync(r =>
+                r.RideId == rideId && r.FromUserId == currentUser.Id && r.ToUserId == ride.DriverId);
+
+            if (exists != null)
+            {
+                TempData["ErrorMessage"] = "Już oceniłeś tego kierowcę dla tego przejazdu.";
+                return RedirectToAction("Summary", new { id = rideId });
+            }
+
+            var review = new Review
+            {
+                FromUserId = currentUser.Id,
+                ToUserId = ride.DriverId,
+                Rating = Math.Clamp(rating, 1, 5),
+                Comment = comment ?? string.Empty,
+                CreateAt = DateTime.UtcNow,
+                RideId = rideId
+            };
+
+            _context.Reviews.Add(review);
+            await _context.SaveChangesAsync();
+
+            // Zaktualizuj średnią ocenę kierowcy (DriverProfile.Rating)
+            var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(p => p.UserId == ride.DriverId);
+            if (driverProfile != null)
+            {
+                var all = await _context.Reviews.Where(r => r.ToUserId == ride.DriverId).ToListAsync();
+                driverProfile.Rating = all.Any() ? all.Average(r => r.Rating) : 0.0;
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["SuccessMessage"] = "Ocena zapisana.";
+            return RedirectToAction("Summary", new { id = rideId });
         }
 
     }

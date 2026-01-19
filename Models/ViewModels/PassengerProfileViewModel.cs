@@ -23,5 +23,12 @@ namespace projekt_zespołowy.Models.ViewModels
 
         // 🚗 KLUCZOWE
         public bool IsDriver { get; set; }
+
+        // Oceny
+        // Ocena tego użytkownika jako pasażera (z PassengerProfile.Rating)
+        public double PassengerRating { get; set; }
+
+        // Ocena tego użytkownika jako kierowcy (jeśli istnieje DriverProfile). Nullable, bo nie każdy jest kierowcą.
+        public double? DriverRating { get; set; }
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 using projekt_zespołowy.Models.ViewModels;
+using System.Security.Claims;
 
 namespace projekt_zespołowy.Controllers
 {
@@ -23,8 +24,7 @@ namespace projekt_zespołowy.Controllers
         {
             var query = _context.OfferedRides
                 .Include(r => r.Vehicle)
-                .Include(r => r.Driver)
-                    .ThenInclude(d => d.User)
+                .Include(r => r.Driver).ThenInclude(d => d.User)
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
                 .AsQueryable();
@@ -44,7 +44,6 @@ namespace projekt_zespołowy.Controllers
                 query = query.Where(r => r.DepartureTime.Date == searchDate.Value.Date);
             }
 
-            // Pokazujemy w publicznym wyszukiwaniu tylko aktywne przejazdy (Published lub InProgress).
             query = query.Where(r => r.Status == RideStatus.Published || r.Status == RideStatus.InProgress);
 
             var rides = await query
@@ -68,8 +67,7 @@ namespace projekt_zespołowy.Controllers
 
             var myRides = await _context.OfferedRides
                 .Include(r => r.Vehicle)
-                .Include(r => r.Driver)
-                    .ThenInclude(d => d.User)
+                .Include(r => r.Driver).ThenInclude(d => d.User)
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
                 .Where(r => r.DriverId.ToString() == userId)
@@ -81,17 +79,16 @@ namespace projekt_zespołowy.Controllers
             return View("Index", myRides);
         }
 
-        // Dodane: Moje ukończone przejazdy
+        // Moje ukończone przejazdy
         [Authorize]
         public async Task<IActionResult> Completed()
         {
             var userId = _userManager.GetUserId(User);
 
-            // Sprawdź, czy użytkownik ma profil kierowcy
             var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId.ToString() == userId);
             if (driverProfile == null)
             {
-                return Forbid(); // 403 dla użytkowników, którzy nie są kierowcami
+                return Forbid();
             }
 
             var completedRides = await _context.OfferedRides
@@ -112,7 +109,7 @@ namespace projekt_zespołowy.Controllers
         {
             var ride = await _context.OfferedRides
                 .Include(r => r.Vehicle)
-                .Include(r => r.Driver).ThenInclude(d => d.User) // kierowca
+                .Include(r => r.Driver).ThenInclude(d => d.User)
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
                 .FirstOrDefaultAsync(r => r.Id == id);
@@ -126,7 +123,6 @@ namespace projekt_zespołowy.Controllers
 
             ViewBag.Bookings = bookings;
 
-            // DODANE: pobieramy profile pasażerów aby mieć ich oceny i przekazujemy do widoku
             var passengerUserIds = bookings.Select(b => b.PassengerUserId).Distinct().ToList();
             var passengerProfiles = await _context.PassengerProfiles
                 .Where(p => passengerUserIds.Contains(p.UserId))
@@ -138,27 +134,39 @@ namespace projekt_zespołowy.Controllers
             return View(ride);
         }
 
-        // Create (GET)
         [Authorize]
         [HttpGet]
         public async Task<IActionResult> Create()
         {
             var userId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Admin");
+            var isDriver = User.IsInRole("Driver");
 
-            var vehicles = await _context.Vehicles
-                .Where(v => v.OwnerId.ToString() == userId)
-                .ToListAsync();
+            if (!isAdmin && !isDriver)
+            {
+                // Tutaj ustawiamy komunikat błędu, który wyświetli się na stronie listy przejazdów
+                TempData["Error"] = "Tylko zarejestrowani kierowcy mogą dodawać nowe trasy. Zostań kierowcą w swoim profilu!";
+                return RedirectToAction("Index");
+            }
 
-            // Jeśli brak pojazdów — nie przekierowujemy. Zwracamy formularz przejazdu z pustą listą i komunikatem.
+            List<Vehicle> vehicles;
+
+            if (isAdmin)
+            {
+                // Admin: wszystkie pojazdy
+                vehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync(); // FIX: Usunięto .ThenInclude
+            }
+            else
+            {
+                vehicles = await _context.Vehicles
+                    .Where(v => v.OwnerId.ToString() == userId)
+                    .ToListAsync();
+            }
+
             if (!vehicles.Any())
             {
-                TempData["Error"] = "Nie masz jeszcze dodanych pojazdów. Wybierz pojazd po jego dodaniu lub dodaj pojazd w osobnym formularzu.";
-                var emptyModel = new AddRideViewModel
-                {
-                    AvailableVehicles = vehicles, // pusta lista
-                    DepartureTime = DateTime.Now.AddHours(1)
-                };
-                return View(emptyModel);
+                TempData["Error"] = "Nie masz dostępnych pojazdów. Dodaj pojazd, aby utworzyć przejazd.";
+                return RedirectToAction("Index", "Vehicle"); // Przekierowanie do listy pojazdów
             }
 
             var model = new AddRideViewModel
@@ -169,7 +177,7 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // Create (POST)
+        // --- Create (POST) - POPRAWIONE ---
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -181,54 +189,44 @@ namespace projekt_zespołowy.Controllers
             ModelState.Remove("EndLocation.Latitude");
             ModelState.Remove("EndLocation.Longtitude");
 
-            var userId = _userManager.GetUserId(User);
-
             if (!ModelState.IsValid)
             {
-                model.AvailableVehicles = await _context.Vehicles
-                    .Where(v => v.OwnerId.ToString() == userId).ToListAsync();
+                var uid = _userManager.GetUserId(User);
+                if (User.IsInRole("Admin"))
+                    // FIX: Usunięto .ThenInclude(o => o.User)
+                    model.AvailableVehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync();
+                else
+                    model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == uid).ToListAsync();
+
                 return View(model);
             }
 
-            var vehicle = await _context.Vehicles
-                .Include(v => v.Owner)
-                .FirstOrDefaultAsync(v => v.Id == model.SelectedVehicleId);
+            // Tutaj .Include(v => v.Owner) jest OK, bo nie ma ThenInclude
+            var vehicle = await _context.Vehicles.Include(v => v.Owner).FirstOrDefaultAsync(v => v.Id == model.SelectedVehicleId);
+            if (vehicle == null) return NotFound();
 
-            if (vehicle == null)
+            var currentUserId = Guid.Parse(_userManager.GetUserId(User));
+            var isAdmin = User.IsInRole("Admin");
+
+            if (!isAdmin && vehicle.OwnerId != currentUserId)
             {
-                ModelState.AddModelError("", "Wybrany pojazd nie istnieje.");
-                model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync();
-                return View(model);
+                return Forbid();
             }
 
-            if (model.DepartureTime <= DateTime.Now)
-            {
-                ModelState.AddModelError("DepartureTime", "Data wyjazdu musi być w przyszłości.");
-            }
+            Guid driverId = vehicle.OwnerId;
 
-            if (model.ArrivalTime.HasValue && model.ArrivalTime <= model.DepartureTime)
-            {
-                ModelState.AddModelError("ArrivalTime", "Data przyjazdu musi być późniejsza niż data wyjazdu.");
-            }
-
-            int maxPassengerSeats = vehicle.SeatsTotal > 0 ? vehicle.SeatsTotal - 1 : 0;
-            if (model.SeatsOffered > maxPassengerSeats)
-            {
-                ModelState.AddModelError("SeatsOffered",
-                    $"Pojazd ma {vehicle.SeatsTotal} miejsc. Max pasażerów to {maxPassengerSeats}.");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync();
-                return View(model);
-            }
-
-            var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId.ToString() == userId);
-
+            var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == driverId);
             if (driverProfile == null)
             {
-                return RedirectToAction("BecomeDriver", "DriverProfile");
+                ModelState.AddModelError("", "Właściciel wybranego pojazdu nie posiada aktywnego profilu kierowcy.");
+
+                var uid = _userManager.GetUserId(User);
+                if (isAdmin)
+                    // FIX: Usunięto .ThenInclude(o => o.User)
+                    model.AvailableVehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync();
+                else
+                    model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == uid).ToListAsync();
+                return View(model);
             }
 
             var startLoc = new LocationPoint
@@ -240,7 +238,6 @@ namespace projekt_zespołowy.Controllers
                 Latitude = 52.2297,
                 Longtitude = 21.0122
             };
-
             var endLoc = new LocationPoint
             {
                 Id = Guid.NewGuid(),
@@ -255,7 +252,7 @@ namespace projekt_zespołowy.Controllers
             {
                 Id = Guid.NewGuid(),
                 VehicleId = model.SelectedVehicleId,
-                DriverId = driverProfile.UserId,
+                DriverId = driverId,
                 StartLocation = startLoc,
                 EndLocation = endLoc,
                 DepartureTime = model.DepartureTime,
@@ -272,7 +269,6 @@ namespace projekt_zespołowy.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Pomyślnie dodano nowy przejazd!";
-
             return RedirectToAction(nameof(Index));
         }
 
@@ -288,13 +284,11 @@ namespace projekt_zespołowy.Controllers
             if (ride == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            // właściciel lub admin
             if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
             {
                 return Forbid();
             }
 
-            // blokada gdy są rezerwacje
             var hasBookings = await _context.Bookings.AnyAsync(b => b.RideId == id);
             if (hasBookings)
             {
@@ -330,9 +324,7 @@ namespace projekt_zespołowy.Controllers
                 AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == userId).ToListAsync()
             };
 
-            // potrzebne w widoku do ustawienia asp-route-id formularza
             ViewBag.RideId = ride.Id;
-
             return View(model);
         }
 
@@ -359,13 +351,11 @@ namespace projekt_zespołowy.Controllers
 
             if (ride == null) return NotFound();
 
-            // właściciel lub admin
             if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
             {
                 return Forbid();
             }
 
-            // blokada gdy są rezerwacje
             var hasBookings = await _context.Bookings.AnyAsync(b => b.RideId == id);
             if (hasBookings)
             {
@@ -396,11 +386,10 @@ namespace projekt_zespołowy.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Przejazd zaktualizowany!";
-
             return RedirectToAction(nameof(Index));
         }
 
-        // Summary (GET) - widok podsumowania przejazdu
+        // Summary (GET)
         [Authorize]
         public async Task<IActionResult> Summary(Guid id)
         {
@@ -416,7 +405,6 @@ namespace projekt_zespołowy.Controllers
             var currentUser = await _userManager.GetUserAsync(User);
             var userId = currentUser != null ? currentUser.Id.ToString() : null;
 
-            // allow driver, admin or a passenger who had a booking
             var isDriver = currentUser != null && ride.DriverId == currentUser.Id;
             var isAdmin = User.IsInRole("Admin");
 
@@ -434,7 +422,6 @@ namespace projekt_zespołowy.Controllers
 
             ViewBag.Bookings = bookings;
 
-            // Pobierz recenzje wystawione przez aktualnego użytkownika dla tego przejazdu
             var myReviews = new Dictionary<Guid, Review>();
             if (currentUser != null)
             {
@@ -452,7 +439,7 @@ namespace projekt_zespołowy.Controllers
             return View("Summary", ride);
         }
 
-        // POST: kierowca ocenia pasażera
+        // POST: RatePassenger
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -464,18 +451,15 @@ namespace projekt_zespołowy.Controllers
             var ride = await _context.OfferedRides.FirstOrDefaultAsync(r => r.Id == rideId);
             if (ride == null) return NotFound();
 
-            // tylko kierowca (właściciel przejazdu) może oceniać pasażerów tego przejazdu
             if (!User.IsInRole("Admin") && ride.DriverId != currentUser.Id)
                 return Forbid();
 
-            // dopuszczamy ocenianie tylko po zakończeniu przejazdu
             if (ride.Status != RideStatus.Completed)
             {
                 TempData["ErrorMessage"] = "Oceny można wystawić dopiero po zakończeniu przejazdu.";
                 return RedirectToAction("Summary", new { id = rideId });
             }
 
-            // sprawdź, czy pasażer był zapisany na ten przejazd
             var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.RideId == rideId && b.PassengerUserId == passengerUserId);
             if (booking == null)
             {
@@ -483,7 +467,6 @@ namespace projekt_zespołowy.Controllers
                 return RedirectToAction("Summary", new { id = rideId });
             }
 
-            // zapobiegaj wielokrotnemu ocenianiu tego samego pasażera przez tego samego użytkownika dla tego przejazdu
             var exists = await _context.Reviews.FirstOrDefaultAsync(r =>
                 r.RideId == rideId && r.FromUserId == currentUser.Id && r.ToUserId == passengerUserId);
 
@@ -506,7 +489,6 @@ namespace projekt_zespołowy.Controllers
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
-            // Zaktualizuj średnią ocenę pasażera (PassengerProfile.Rating)
             var passengerProfile = await _context.PassengerProfiles.FirstOrDefaultAsync(p => p.UserId == passengerUserId);
             if (passengerProfile != null)
             {
@@ -519,7 +501,7 @@ namespace projekt_zespołowy.Controllers
             return RedirectToAction("Summary", new { id = rideId });
         }
 
-        // Complete (POST) - zakończenie przejazdu
+        // Complete (POST)
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -533,7 +515,6 @@ namespace projekt_zespołowy.Controllers
             if (ride == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            // właściciel lub admin
             if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
             {
                 return Forbid();
@@ -548,7 +529,6 @@ namespace projekt_zespołowy.Controllers
             ride.Status = RideStatus.Completed;
             if (!ride.ArrivalTime.HasValue) ride.ArrivalTime = DateTime.Now;
 
-            // Zmieniamy status rezerwacji na Completed
             var bookings = await _context.Bookings.Where(b => b.RideId == id).ToListAsync();
             foreach (var b in bookings)
             {
@@ -574,13 +554,11 @@ namespace projekt_zespołowy.Controllers
             if (ride == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-            // właściciel lub admin
             if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
             {
                 return Forbid();
             }
 
-            // blokada gdy są rezerwacje
             var hasBookings = await _context.Bookings.AnyAsync(b => b.RideId == id);
             if (hasBookings)
             {
@@ -601,14 +579,11 @@ namespace projekt_zespołowy.Controllers
             if (ride == null) return NotFound();
 
             var userId = _userManager.GetUserId(User);
-
-            // właściciel lub admin
             if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
             {
                 return Forbid();
             }
 
-            // blokada gdy są rezerwacje
             var hasBookings = await _context.Bookings.AnyAsync(b => b.RideId == id);
             if (hasBookings)
             {
@@ -620,11 +595,10 @@ namespace projekt_zespołowy.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Przejazd został usunięty!";
-
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: ocena kierowcy przez pasażera
+        // POST: RateDriver
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -636,7 +610,6 @@ namespace projekt_zespołowy.Controllers
             var ride = await _context.OfferedRides.FirstOrDefaultAsync(r => r.Id == rideId);
             if (ride == null) return NotFound();
 
-            // tylko pasażerowie zapisani na przejazd lub admin mogą oceniać kierowcę
             var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.RideId == rideId && b.PassengerUserId == currentUser.Id);
             if (booking == null && !User.IsInRole("Admin"))
             {
@@ -644,20 +617,18 @@ namespace projekt_zespołowy.Controllers
                 return RedirectToAction("Summary", new { id = rideId });
             }
 
-            // dopuszczamy ocenianie tylko po zakończeniu przejazdu
             if (ride.Status != RideStatus.Completed)
             {
                 TempData["ErrorMessage"] = "Oceny można wystawić dopiero po zakończeniu przejazdu.";
                 return RedirectToAction("Summary", new { id = rideId });
             }
 
-            // zapobiegaj wielokrotnemu ocenianiu tego samego kierowcy przez tego samego pasażera dla tego przejazdu
             var exists = await _context.Reviews.FirstOrDefaultAsync(r =>
                 r.RideId == rideId && r.FromUserId == currentUser.Id && r.ToUserId == ride.DriverId);
 
             if (exists != null)
             {
-                TempData["ErrorMessage"] = "Już oceniłeś tego kierowcę dla tego przejazdu.";
+                TempData["ErrorMessage"] = "Już oceniłeś tego kierowcy dla tego przejazdu.";
                 return RedirectToAction("Summary", new { id = rideId });
             }
 
@@ -674,7 +645,6 @@ namespace projekt_zespołowy.Controllers
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
-            // Zaktualizuj średnią ocenę kierowcy (DriverProfile.Rating)
             var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(p => p.UserId == ride.DriverId);
             if (driverProfile != null)
             {
@@ -686,6 +656,5 @@ namespace projekt_zespołowy.Controllers
             TempData["SuccessMessage"] = "Ocena zapisana.";
             return RedirectToAction("Summary", new { id = rideId });
         }
-
     }
 }

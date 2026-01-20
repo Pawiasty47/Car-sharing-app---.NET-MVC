@@ -1,0 +1,87 @@
+﻿@model projekt_zespołowy.Models.Vehicle
+@{
+    ViewData["Title"] = "Szczegóły pojazdu";
+}
+
+<div class="container mt-5">
+    <div class="card shadow border-0 overflow-hidden">
+        <div class="row g-0">
+            <!-- Zdjęcie -->
+            <div class="col-md-5 bg-light d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="~/images/vehicles/@Model.ImageUrl" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="@Model.Make">
+                }
+                else
+                {
+                    <div class="text-center text-muted">
+                        <i class="bi bi-car-front display-1"></i>
+                        <p class="mt-2">Brak zdjęcia</p>
+                    </div>
+                }
+            </div>
+
+            <!-- Dane -->
+            <div class="col-md-7">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="text-uppercase text-muted small mb-1">Pojazd</h5>
+                            <h1 class="card-title fw-bold text-success mb-0">@Model.Make @Model.Model</h1>
+                        </div>
+                        <span class="badge bg-dark fs-6 px-3 py-2 rounded-pill">
+                            @Model.RegistrationNumber
+                        </span>
+                    </div>
+
+                    <div class="row g-4 mt-2">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-palette fs-4 me-3 text-secondary"></i>
+                                <div>
+                                    <small class="text-muted d-block">Kolor</small>
+                                    <strong>@Model.Color</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-people fs-4 me-3 text-secondary"></i>
+                                <div>
+                                    <small class="text-muted d-block">Miejsca</small>
+                                    <strong>@Model.SeatsAvailable / @Model.SeatsTotal</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 border-top pt-3">
+                            <small class="text-muted d-block mb-2">Właściciel</small>
+                            @if (Model.Owner != null)
+                            {
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-success text-white rounded-circle p-2 me-2">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <div>
+                                        <!-- FIX: Używamy Model.Owner bezpośrednio -->
+                                        <span class="fw-bold">@Model.Owner.FirstName @Model.Owner.LastName</span>
+                                        <br>
+                                        <span class="text-muted small">@Model.Owner.Email</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span>Nieznany</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mt-5 d-flex gap-2">
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning px-4"><i class="bi bi-pencil me-1"></i> Edytuj</a>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Wróć do listy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

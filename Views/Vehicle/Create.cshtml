@@ -5,88 +5,67 @@
 
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
-
-        <div class="text-center mb-4">
-            <h2 class="fw-bold text-success">
-                <i class="bi bi-car-front me-2"></i>Dodaj swój pojazd
-            </h2>
-            <p class="text-muted">Uzupełnij dane samochodu, którym będziesz przewozić pasażerów.</p>
-        </div>
-
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <form asp-action="Create" method="post">
+                <h3 class="fw-bold text-success text-center mb-4">Dodaj pojazd</h3>
+                <!-- WAŻNE: enctype -->
+                <form asp-action="Create" method="post" enctype="multipart/form-data">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                    <hr class="text-muted" />
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="mb-3">
+                            <label asp-for="OwnerId" class="form-label text-muted small fw-bold">ID Właściciela (Admin)</label>
+                            <input asp-for="OwnerId" class="form-control form-control-sm font-monospace" />
+                        </div>
+                    }
 
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label asp-for="Make" class="form-label fw-semibold"></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light"><i class="bi bi-tag"></i></span>
-                                <input asp-for="Make" class="form-control" placeholder="np. Volkswagen" />
-                            </div>
+                        <div class="col-6">
+                            <label asp-for="Make" class="form-label fw-bold">Marka</label>
+                            <input asp-for="Make" class="form-control" />
                             <span asp-validation-for="Make" class="text-danger small"></span>
                         </div>
-                        <div class="col-md-6">
-                            <label asp-for="Model" class="form-label fw-semibold"></label>
-                            <input asp-for="Model" class="form-control" placeholder="np. Golf" />
+                        <div class="col-6">
+                            <label asp-for="Model" class="form-label fw-bold">Model</label>
+                            <input asp-for="Model" class="form-control" />
                             <span asp-validation-for="Model" class="text-danger small"></span>
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <label asp-for="RegistrationNumber" class="form-label fw-bold">Rejestracja</label>
+                        <input asp-for="RegistrationNumber" class="form-control text-uppercase" />
+                        <span asp-validation-for="RegistrationNumber" class="text-danger small"></span>
+                    </div>
+
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label asp-for="RegistrationNumber" class="form-label fw-semibold"></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light"><i class="bi bi-postcard"></i></span>
-                                <input asp-for="RegistrationNumber" class="form-control text-uppercase" placeholder="np. KR 12345" />
-                            </div>
-                            <div class="form-text text-muted small">Bez myślników i spacji.</div>
-                            <span asp-validation-for="RegistrationNumber" class="text-danger small"></span>
+                        <div class="col-6">
+                            <label asp-for="Color" class="form-label fw-bold">Kolor</label>
+                            <input asp-for="Color" class="form-control" />
                         </div>
-                        <div class="col-md-6">
-                            <label asp-for="Color" class="form-label fw-semibold"></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light"><i class="bi bi-palette"></i></span>
-                                <input asp-for="Color" class="form-control" placeholder="np. Czarny" />
-                            </div>
-                            <span asp-validation-for="Color" class="text-danger small"></span>
+                        <div class="col-6">
+                            <label asp-for="SeatsTotal" class="form-label fw-bold">Miejsca</label>
+                            <input asp-for="SeatsTotal" type="number" class="form-control" min="2" max="9" />
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label asp-for="SeatsTotal" class="form-label fw-semibold"></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light"><i class="bi bi-people"></i></span>
-                            <input asp-for="SeatsTotal" type="number" class="form-control" min="2" max="9" />
-                        </div>
-                        <div class="form-text text-muted">
-                            Wliczając Ciebie (kierowcę). Standardowy samochód osobowy ma 5 miejsc.
-                        </div>
-                        <span asp-validation-for="SeatsTotal" class="text-danger small"></span>
+                        <label asp-for="VehiclePhoto" class="form-label fw-bold">Zdjęcie</label>
+                        <input asp-for="VehiclePhoto" class="form-control" type="file" accept="image/*" />
                     </div>
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary me-md-2">Anuluj</a>
-                        <button type="submit" class="btn btn-success px-4 fw-bold">
-                            <i class="bi bi-plus-lg me-1"></i> Dodaj pojazd
-                        </button>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Zapisz</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Anuluj</a>
                     </div>
-
                 </form>
             </div>
         </div>
-
-        <div class="text-center mt-4 text-muted small">
-            <i class="bi bi-shield-check me-1"></i> Twój pojazd będzie widoczny dla pasażerów dopiero po dodaniu trasy.
-        </div>
     </div>
 </div>
-
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-}
+ }

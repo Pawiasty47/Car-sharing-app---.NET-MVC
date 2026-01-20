@@ -29,5 +29,10 @@ namespace projekt_zespołowy.Models.ViewModels
         [Required(ErrorMessage = "Kolor pojazdu jest wymagany.")]
         [Display(Name = "Kolor", Prompt = "np. Srebrny metalik")]
         public string Color { get; set; }
+
+        [Display(Name = "Zdjęcie pojazdu")]
+        public IFormFile? VehiclePhoto { get; set; }
+
+        public string? ExistingImageUrl { get; set; }
     }
 }

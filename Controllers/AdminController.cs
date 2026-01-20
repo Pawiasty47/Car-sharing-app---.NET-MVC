@@ -22,22 +22,37 @@ namespace projekt_zespołowy.Controllers
         }
 
         // GET: /Admin/Users
-        // Wyświetla listę użytkowników
         public async Task<IActionResult> Users()
         {
-            var users = await _userManager.Users.ToListAsync();
-            var driverIds = await _db.DriverProfiles.Select(d => d.UserId).ToListAsync();
+            // 1. Pobieramy wszystkich użytkowników
+            var users = await _db.Users.ToListAsync();
+
+            // 2. Pobieramy ID użytkowników, którzy mają profil w DriverProfiles
+            var profileUserIds = await _db.DriverProfiles
+                .Select(d => d.UserId)
+                .ToListAsync();
+
+            // 3. Pobieramy ID użytkowników, którzy mają rolę "Driver" (z Identity)
+            // To jest kluczowe, bo Anna może mieć rolę, ale brak profilu (np. błąd przy tworzeniu)
+            var usersInDriverRole = await _userManager.GetUsersInRoleAsync("Driver");
+            var roleUserIds = usersInDriverRole.Select(u => u.Id).ToList();
 
             var model = new List<AdminUserListVM>();
 
             foreach (var user in users)
             {
+                // Sprawdzamy czy ID jest w liście profili LUB w liście ról
+                bool hasProfile = profileUserIds.Contains(user.Id);
+                bool hasRole = roleUserIds.Contains(user.Id);
+
                 var vm = new AdminUserListVM
                 {
                     Id = user.Id.ToString(),
                     Email = user.Email,
                     FullName = $"{user.FirstName} {user.LastName}",
-                    IsDriver = driverIds.Contains(user.Id)
+
+                    // Uznajemy za kierowcę, jeśli ma profil ALBO rolę (dla pewności)
+                    IsDriver = hasProfile || hasRole
                 };
 
                 model.Add(vm);
@@ -47,23 +62,18 @@ namespace projekt_zespołowy.Controllers
         }
 
         // POST: /Admin/Delete/5
-        // Usuwa użytkownika z bazy
         [HttpPost]
-        [ValidateAntiForgeryToken] // Zabezpieczenie przed atakami CSRF
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
         {
-            // 1. Znajdź użytkownika do usunięcia
             var user = await _userManager.FindByIdAsync(id);
 
             if (user == null)
             {
-                // Jeśli nie ma takiego usera, wyświetl błąd lub wróć do listy
                 TempData["Error"] = "Nie znaleziono użytkownika.";
                 return RedirectToAction(nameof(Users));
             }
 
-            // 2. ZABEZPIECZENIE: Nie pozwól usunąć samego siebie!
-            // Pobieramy ID aktualnie zalogowanego admina
             var currentUserId = _userManager.GetUserId(User);
 
             if (user.Id.ToString() == currentUserId)
@@ -72,7 +82,15 @@ namespace projekt_zespołowy.Controllers
                 return RedirectToAction(nameof(Users));
             }
 
-            // 3. Usuwanie
+            // Najpierw usuwamy zależne dane (jeśli kaskadowanie w bazie nie zadziała)
+            var driverProfile = await _db.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == user.Id);
+            if (driverProfile != null) _db.DriverProfiles.Remove(driverProfile);
+
+            var passengerProfile = await _db.PassengerProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
+            if (passengerProfile != null) _db.PassengerProfiles.Remove(passengerProfile);
+
+            await _db.SaveChangesAsync();
+
             var result = await _userManager.DeleteAsync(user);
 
             if (result.Succeeded)

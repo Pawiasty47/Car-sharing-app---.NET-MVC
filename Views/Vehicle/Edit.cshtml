@@ -6,47 +6,70 @@
 <div class="container mt-4">
     <h2>Edycja pojazdu</h2>
     <hr />
+
     <form asp-action="Edit" method="post" enctype="multipart/form-data">
+        <!-- Pola ukryte -->
+        <input type="hidden" asp-for="OwnerId" />
+        <input type="hidden" asp-for="ExistingImageUrl" />
+
         <div class="row">
+            <!-- ZDJĘCIE -->
             <div class="col-md-4 mb-3">
                 <div class="card">
+                    <div class="card-header text-center">ZDJĘCIE</div>
                     @if (!string.IsNullOrEmpty(Model.ExistingImageUrl))
                     {
                         <img src="~/images/vehicles/@Model.ExistingImageUrl" class="card-img-top" style="max-height: 250px; object-fit: cover;">
                     }
                     else
                     {
-                        <div class="card-body text-center bg-light py-5"><i class="bi bi-car-front display-4 text-muted"></i><p>Brak zdjęcia</p></div>
+                        <div class="card-body text-center bg-light py-5">Brak zdjęcia</div>
                     }
                     <div class="card-footer">
-                        <label asp-for="VehiclePhoto" class="form-label fw-bold mb-1">Zmień zdjęcie</label>
+                        <label asp-for="VehiclePhoto" class="form-label fw-bold">Zmień zdjęcie</label>
                         <input asp-for="VehiclePhoto" class="form-control form-control-sm" type="file" accept="image/*" />
                     </div>
                 </div>
             </div>
+
+            <!-- DANE -->
             <div class="col-md-8">
-                <div class="card p-4 border-0 shadow-sm">
-                    <input type="hidden" asp-for="OwnerId" />
-                    <input type="hidden" asp-for="ExistingImageUrl" />
-                    <!-- Pola edycji takie same jak w create, skróciłem dla czytelności -->
+                <div class="card p-4">
                     <div class="row g-3">
-                        <div class="col-6"><label asp-for="Make" class="form-label">Marka</label><input asp-for="Make" class="form-control" /></div>
-                        <div class="col-6"><label asp-for="Model" class="form-label">Model</label><input asp-for="Model" class="form-control" /></div>
-                        <div class="col-6"><label asp-for="RegistrationNumber" class="form-label">Rejestracja</label><input asp-for="RegistrationNumber" class="form-control text-uppercase" /></div>
-                        <div class="col-6"><label asp-for="Color" class="form-label">Kolor</label><input asp-for="Color" class="form-control" /></div>
-                        <div class="col-6"><label asp-for="SeatsTotal" class="form-label">Miejsca</label><input asp-for="SeatsTotal" class="form-control" /></div>
+                        <div class="col-6">
+                            <label asp-for="Make" class="form-label fw-bold">Marka</label>
+                            <!-- Upewnij się, że NIE MA tu 'disabled' -->
+                            <input asp-for="Make" class="form-control" />
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Model" class="form-label fw-bold">Model</label>
+                            <input asp-for="Model" class="form-control" />
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="RegistrationNumber" class="form-label fw-bold">Rejestracja</label>
+                            <input asp-for="RegistrationNumber" class="form-control text-uppercase" />
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Color" class="form-label fw-bold">Kolor</label>
+                            <input asp-for="Color" class="form-control" />
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="SeatsTotal" class="form-label fw-bold">Liczba miejsc</label>
+                            <input asp-for="SeatsTotal" class="form-control" type="number" />
+                        </div>
                     </div>
-                    <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary px-4">Zapisz zmiany</button>
-                        <a asp-action="Index" class="btn btn-secondary">Anuluj</a>
+
+                    <div class="mt-4 text-end">
+                        <button type="submit" class="btn btn-success px-4">Zapisz zmiany</button>
                     </div>
                 </div>
             </div>
         </div>
     </form>
 </div>
+
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
- }
+}

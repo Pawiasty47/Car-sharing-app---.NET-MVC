@@ -12,7 +12,7 @@ namespace projekt_zespołowy.Controllers
     {
         private readonly AppDbContext _context;
         private readonly UserManager<User> _userManager;
-        private readonly IWebHostEnvironment _webHostEnvironment; // NOWE: Do zapisu plików
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
         public VehicleController(AppDbContext context, UserManager<User> userManager, IWebHostEnvironment webHostEnvironment)
         {
@@ -21,40 +21,31 @@ namespace projekt_zespołowy.Controllers
             _webHostEnvironment = webHostEnvironment;
         }
 
-        // GET: Vehicle
+        // --- INDEX ---
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
 
             List<Vehicle> vehicles;
-
             if (User.IsInRole("Admin"))
-            {
                 vehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync();
-            }
             else
-            {
                 vehicles = await _context.Vehicles.Include(v => v.Owner).Where(v => v.OwnerId == user.Id).ToListAsync();
-            }
 
             ViewBag.IsMyVehiclesMode = true;
             return View(vehicles);
         }
 
-        public async Task<IActionResult> MyVehicles() => RedirectToAction(nameof(Index));
-
+        // --- DETAILS ---
         public async Task<IActionResult> Details(Guid id)
         {
-            // POPRAWKA: Usunięto .ThenInclude(u => u.User), ponieważ Owner to już jest User
-            var v = await _context.Vehicles
-                .Include(v => v.Owner)
-                .FirstOrDefaultAsync(x => x.Id == id);
-
+            var v = await _context.Vehicles.Include(v => v.Owner).FirstOrDefaultAsync(x => x.Id == id);
             if (v == null) return NotFound();
             return View(v);
         }
 
+        // --- CREATE ---
         public IActionResult Create() => View();
 
         [HttpPost]
@@ -65,16 +56,11 @@ namespace projekt_zespołowy.Controllers
             if (user == null) return Unauthorized();
 
             var ownerId = user.Id;
-            // Admin może przypisać właściciela ręcznie
-            if (User.IsInRole("Admin") && vehicle.OwnerId.HasValue)
-            {
-                ownerId = vehicle.OwnerId.Value;
-            }
+            if (User.IsInRole("Admin") && vehicle.OwnerId.HasValue) ownerId = vehicle.OwnerId.Value;
             ModelState.Remove("OwnerId");
 
             if (!ModelState.IsValid) return View(vehicle);
 
-            // --- ZAPIS ZDJĘCIA ---
             string? uniqueFileName = null;
             if (vehicle.VehiclePhoto != null)
             {
@@ -93,21 +79,20 @@ namespace projekt_zespołowy.Controllers
                 Id = Guid.NewGuid(),
                 Make = vehicle.Make,
                 Model = vehicle.Model,
-                RegistrationNumber = vehicle.RegistrationNumber,
+                RegistrationNumber = vehicle.RegistrationNumber.ToUpper(),
                 SeatsTotal = vehicle.SeatsTotal,
                 SeatsAvailable = vehicle.SeatsTotal - 1,
                 Color = vehicle.Color,
                 OwnerId = ownerId,
                 ImageUrl = uniqueFileName
             };
-
             _context.Vehicles.Add(v);
             await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Pojazd został dodany!";
+            TempData["SuccessMessage"] = "Pojazd dodany!";
             return RedirectToAction("Index");
         }
 
+        // --- EDIT (GET) ---
         public async Task<IActionResult> Edit(Guid id)
         {
             var v = await _context.Vehicles.FindAsync(id);
@@ -124,7 +109,7 @@ namespace projekt_zespołowy.Controllers
                 SeatsTotal = v.SeatsTotal,
                 Color = v.Color,
                 OwnerId = v.OwnerId,
-                ExistingImageUrl = v.ImageUrl // Przekazujemy stare zdjęcie
+                ExistingImageUrl = v.ImageUrl
             };
             return View(model);
         }
@@ -133,34 +118,68 @@ namespace projekt_zespołowy.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Guid id, AddVehicleViewModel model)
         {
-            if (model.VehiclePhoto == null) ModelState.Remove("VehiclePhoto");
-            ModelState.Remove("OwnerId");
-
-            if (!ModelState.IsValid) return View(model);
-
             var v = await _context.Vehicles.FindAsync(id);
             if (v == null) return NotFound();
 
             var user = await _userManager.GetUserAsync(User);
             if (!User.IsInRole("Admin") && v.OwnerId != user.Id) return Forbid();
 
-            v.Make = model.Make;
-            v.Model = model.Model;
-            v.RegistrationNumber = model.RegistrationNumber;
-            v.SeatsTotal = model.SeatsTotal;
-            v.Color = model.Color;
+            string formMake = Request.Form["Make"];
+            string formModel = Request.Form["Model"];
+            string formReg = Request.Form["RegistrationNumber"];
+            string formColor = Request.Form["Color"];
+            string formSeats = Request.Form["SeatsTotal"];
 
-            // --- ZMIANA ZDJĘCIA ---
-            if (model.VehiclePhoto != null)
+            if (!string.IsNullOrEmpty(formMake)) v.Make = formMake;
+            else if (!string.IsNullOrEmpty(model.Make)) v.Make = model.Make;
+
+            if (!string.IsNullOrEmpty(formModel)) v.Model = formModel;
+            else if (!string.IsNullOrEmpty(model.Model)) v.Model = model.Model;
+
+            if (!string.IsNullOrEmpty(formReg)) v.RegistrationNumber = formReg.ToUpper();
+            else if (!string.IsNullOrEmpty(model.RegistrationNumber)) v.RegistrationNumber = model.RegistrationNumber.ToUpper();
+
+            if (!string.IsNullOrEmpty(formColor)) v.Color = formColor;
+            else if (!string.IsNullOrEmpty(model.Color)) v.Color = model.Color;
+
+            int seats = 0;
+            if (!string.IsNullOrEmpty(formSeats) && int.TryParse(formSeats, out int s)) seats = s;
+            else seats = model.SeatsTotal;
+
+            if (seats > 0)
+            {
+                v.SeatsTotal = seats;
+                v.SeatsAvailable = seats - 1;
+            }
+
+            
+            IFormFile? fileToSave = model.VehiclePhoto;
+
+            if (fileToSave == null && Request.Form.Files.Count > 0)
+            {
+                fileToSave = Request.Form.Files["VehiclePhoto"];
+            }
+
+            if (fileToSave != null && fileToSave.Length > 0)
             {
                 string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "vehicles");
                 Directory.CreateDirectory(uploadsFolder);
-                string uniqueFileName = Guid.NewGuid().ToString() + "_" + model.VehiclePhoto.FileName;
+
+                string uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(fileToSave.FileName);
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
-                    await model.VehiclePhoto.CopyToAsync(fileStream);
+                    await fileToSave.CopyToAsync(fileStream);
+                }
+
+                if (!string.IsNullOrEmpty(v.ImageUrl))
+                {
+                    string oldPath = Path.Combine(uploadsFolder, v.ImageUrl);
+                    if (System.IO.File.Exists(oldPath))
+                    {
+                        try { System.IO.File.Delete(oldPath); } catch { } // Ignorujemy błędy przy usuwaniu
+                    }
                 }
                 v.ImageUrl = uniqueFileName;
             }
@@ -170,6 +189,7 @@ namespace projekt_zespołowy.Controllers
             return RedirectToAction("Index");
         }
 
+        // --- DELETE ---
         public async Task<IActionResult> Delete(Guid id)
         {
             var v = await _context.Vehicles.FindAsync(id);
@@ -186,9 +206,15 @@ namespace projekt_zespołowy.Controllers
 
             var rides = _context.OfferedRides.Where(r => r.VehicleId == id);
             _context.OfferedRides.RemoveRange(rides);
+
+            if (!string.IsNullOrEmpty(vehicle.ImageUrl))
+            {
+                string path = Path.Combine(_webHostEnvironment.WebRootPath, "images", "vehicles", vehicle.ImageUrl);
+                if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+            }
+
             _context.Vehicles.Remove(vehicle);
             await _context.SaveChangesAsync();
-
             TempData["SuccessMessage"] = "Pojazd usunięty!";
             return RedirectToAction(nameof(Index));
         }

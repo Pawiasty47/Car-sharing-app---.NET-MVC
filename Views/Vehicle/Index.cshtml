@@ -6,14 +6,29 @@
 @{
     ViewData["Title"] = "Lista pojazdów";
 
-    // 1. Sprawdzamy tryb (czy to "Moje samochody"?)
     bool isMyVehiclesMode = ViewBag.IsMyVehiclesMode as bool? ?? false;
 
-    // 2. Sprawdzamy czy to Admin
+
     bool isAdmin = User.IsInRole("Admin");
 }
 
 <div class="container mt-4">
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> <strong>Sukces!</strong> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <strong>Błąd!</strong> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold text-success">
@@ -56,6 +71,19 @@
             {
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm border-0 h-100">
+
+                        <!-- Miniaturka zdjęcia (jeśli jest) -->
+                        @if (!string.IsNullOrEmpty(v.ImageUrl))
+                        {
+                            <img src="~/images/vehicles/@v.ImageUrl" class="card-img-top" alt="@v.Make" style="height: 200px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <div class="bg-light text-center py-4 border-bottom text-muted">
+                                <i class="bi bi-car-front display-4 opacity-50"></i>
+                            </div>
+                        }
+
                         <div class="card-body d-flex flex-column">
 
                             <h5 class="card-title fw-bold mb-2">

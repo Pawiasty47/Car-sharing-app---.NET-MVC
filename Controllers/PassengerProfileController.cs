@@ -19,7 +19,6 @@ namespace projekt_zespołowy.Controllers
             _userManager = userManager;
         }
 
-        // Widok profilu
         [HttpGet]
         public async Task<IActionResult> Index()
         {
@@ -39,10 +38,24 @@ namespace projekt_zespołowy.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // jeśli jest kierowcą, pobierz profil kierowcy żeby wypełnić ocenę kierowcy
             var driverProfile = isDriver
                 ? await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == user.Id)
                 : null;
+
+            // 🔥 KROK 1 — ZAKOŃCZONE PRZEJAZDY JAKO PASAŻER
+            var completedBookings = await _context.Bookings
+                .Include(b => b.Ride)
+                    .ThenInclude(r => r.Driver)
+                        .ThenInclude(d => d.User)
+                .Include(b => b.Ride.StartLocation)
+                .Include(b => b.Ride.EndLocation)
+                .Where(b =>
+                    b.PassengerUserId == user.Id &&
+                    b.Status == BookingStatus.Completed)
+                .OrderByDescending(b => b.Ride.DepartureTime)
+                .ToListAsync();
+
+            ViewBag.CompletedBookings = completedBookings;
 
             var model = new PassengerProfileViewModel
             {
@@ -50,9 +63,8 @@ namespace projekt_zespołowy.Controllers
                 LastName = user.LastName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,
-                ExistingProfilePicture = profile.ProfilePicture, // Przekazujemy zdjęcie do widoku
+                ExistingProfilePicture = profile.ProfilePicture,
 
-                // Mapujemy wszystkie preferencje
                 PrefersNonSmoking = profile.PrefersNonSmoking,
                 PrefersQuietRide = profile.PrefersQuietRide,
                 PrefersMusic = profile.PrefersMusic,
@@ -61,7 +73,6 @@ namespace projekt_zespołowy.Controllers
 
                 IsDriver = isDriver,
 
-                // nowe pola ocen
                 PassengerRating = profile.Rating,
                 DriverRating = driverProfile?.Rating
             };
@@ -69,12 +80,12 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // Formularz edycji
         [HttpGet]
         public async Task<IActionResult> Edit()
         {
             var user = await _userManager.GetUserAsync(User);
-            var profile = await _context.PassengerProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
+            var profile = await _context.PassengerProfiles
+                .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
             if (profile == null)
             {
@@ -89,7 +100,7 @@ namespace projekt_zespołowy.Controllers
                 LastName = user.LastName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,
-                ExistingProfilePicture = profile.ProfilePicture, // Żebyśmy widzieli co mamy
+                ExistingProfilePicture = profile.ProfilePicture,
 
                 PrefersNonSmoking = profile.PrefersNonSmoking,
                 PrefersQuietRide = profile.PrefersQuietRide,
@@ -101,18 +112,16 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // Zapis danych
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(PassengerProfileViewModel model)
         {
-            // Walidacja modelu (pomijamy walidację zdjęcia, bo jest opcjonalne)
             if (!ModelState.IsValid) return View(model);
 
             var user = await _userManager.GetUserAsync(User);
-            var profile = await _context.PassengerProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
+            var profile = await _context.PassengerProfiles
+                .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
-            // 1. Zapis Usera
             user.FirstName = model.FirstName;
             user.LastName = model.LastName;
             user.PhoneNumber = model.PhoneNumber;
@@ -124,26 +133,22 @@ namespace projekt_zespołowy.Controllers
                 user.NormalizedUserName = model.Email.ToUpper();
                 user.NormalizedEmail = model.Email.ToUpper();
             }
+
             await _userManager.UpdateAsync(user);
 
-            // 2. Zapis Profilu
             if (profile != null)
             {
-                // Preferencje
                 profile.PrefersNonSmoking = model.PrefersNonSmoking;
                 profile.PrefersQuietRide = model.PrefersQuietRide;
                 profile.PrefersMusic = model.PrefersMusic;
                 profile.AcceptsPets = model.AcceptsPets;
                 profile.AcceptsEating = model.AcceptsEating;
 
-                // Zdjęcie
                 if (model.ProfilePictureFile != null && model.ProfilePictureFile.Length > 0)
                 {
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        await model.ProfilePictureFile.CopyToAsync(memoryStream);
-                        profile.ProfilePicture = memoryStream.ToArray(); // Konwersja pliku na bazę danych
-                    }
+                    using var ms = new MemoryStream();
+                    await model.ProfilePictureFile.CopyToAsync(ms);
+                    profile.ProfilePicture = ms.ToArray();
                 }
 
                 _context.Update(profile);

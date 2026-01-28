@@ -1,0 +1,161 @@
+﻿@model projekt_zespołowy.Models.DriverProfile
+
+@{
+    ViewData["Title"] = "Profil kierowcy";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-primary text-white text-center py-4">
+            <h2 class="mb-0">🚘 Profil kierowcy</h2>
+        </div>
+
+        <div class="card-body p-5">
+
+            <!-- STATUS WNIOSKU W NAVBARZE -->
+
+            <!-- DANE PODSTAWOWE -->
+            <div class="row align-items-center mb-5">
+                <div class="col-md-12 text-center">
+                    <h2 class="fw-bold">
+                        @Model.User.FirstName @Model.User.LastName
+                    </h2>
+                    <p class="text-muted fs-5">@Model.User.Email</p>
+
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
+                        <span class="badge bg-success p-2">
+                            🚕 Przejazdy:
+                            <strong>@Model.CompletedRidesCount</strong>
+                        </span>
+
+                        <span class="badge bg-warning text-dark p-2">
+                            ⭐ Ocena:
+                            @if (Model.Rating > 0)
+                            {
+                                <strong>@Model.Rating.ToString("0.0") / 5</strong>
+                            }
+                            else
+                            {
+                                <strong>Brak ocen</strong>
+                            }
+                        </span>
+
+                        <!-- STATUS KIEROWCY (POPRWIONE: NA PODSTAWIE WNIOSKU) -->
+                        <span class="badge @(ViewBag.ApplicationStatus == projekt_zespołowy.Models.ApplicationStatus.Approved ? "bg-info" : "bg-secondary") p-2">
+                            @(ViewBag.ApplicationStatus == projekt_zespołowy.Models.ApplicationStatus.Approved
+                                ? "✔ Zweryfikowany kierowca"
+                                : "⏳ Oczekuje na weryfikację")
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <!-- PRAWO JAZDY -->
+            <h4 class="mb-4 text-secondary">📄 Prawo jazdy</h4>
+
+            @if (!string.IsNullOrEmpty(Model.DrivingLicenseImageUrl))
+            {
+                <img src="@Model.DrivingLicenseImageUrl"
+                     class="img-fluid rounded shadow-sm mb-4"
+                     style="max-height:250px;" />
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    Brak dodanego zdjęcia prawa jazdy.
+                </div>
+            }
+
+            <hr />
+
+            <!-- MOJE PRZEJAZDY -->
+            <h4 class="mb-4 text-secondary">🛣️ Moje przejazdy</h4>
+
+            <div class="row text-center mb-4">
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <h1 class="fw-bold text-success">
+                                @Model.CompletedRidesCount
+                            </h1>
+                            <p class="mb-0 text-muted">Zrealizowane przejazdy</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <h1 class="fw-bold text-warning">
+                                @(Model.Rating > 0 ? Model.Rating.ToString("0.0") : "—")
+                            </h1>
+                            <p class="mb-0 text-muted">Średnia ocena</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <!-- POPRAWIONE: KLEPSYDRA / CHECK NA PODSTAWIE WNIOSKU -->
+                            <h1 class="fw-bold text-info">
+                                @(ViewBag.ApplicationStatus == projekt_zespołowy.Models.ApplicationStatus.Approved ? "✔" : "⏳")
+                            </h1>
+                            <p class="mb-0 text-muted">Status kierowcy</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AKCJE -->
+            <div class="mt-4 text-end">
+                <a asp-action="Edit"
+                   class="btn btn-outline-primary btn-lg me-2">
+                    ✏️ Edytuj profil kierowcy
+                </a>
+
+                <a asp-controller="Vehicle"
+                   asp-action="Index"
+                   class="btn btn-success btn-lg">
+                    🚗 Moje pojazdy
+                </a>
+            </div>
+            <hr class="my-5" />
+
+            <h4 class="mb-4 text-secondary">🧾 Zakończone przejazdy (jako kierowca)</h4>
+
+            @if (ViewBag.CompletedRides.Count == 0)
+            {
+                <div class="alert alert-info">
+                    Brak zakończonych przejazdów.
+                </div>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var ride in ViewBag.CompletedRides)
+                    {
+                        <div class="list-group-item shadow-sm mb-2">
+                            <div class="d-flex justify-content-between">
+                                <strong>
+                                    @ride.StartLocation.City →
+                                    @ride.EndLocation.City
+                                </strong>
+                                <span class="text-muted">
+                                    @ride.DepartureTime.ToString("dd.MM.yyyy HH:mm")
+                                </span>
+                            </div>
+
+                            <div class="mt-2 text-muted">
+                                Pasażerów: @ride.Bookings.Count
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+        </div>
+    </div>
+</div>

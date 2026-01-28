@@ -136,6 +136,7 @@
                         🚘 Profil kierowcy
                     </a>
                 }
+
             </div>
 
             @if (User.IsInRole("Admin"))
@@ -155,6 +156,41 @@
                     </div>
                 </div>
             }
+            <hr class="my-5" />
+
+            <h4 class="mb-4 text-secondary">🧾 Zakończone przejazdy (jako pasażer)</h4>
+
+            @if (ViewBag.CompletedBookings.Count == 0)
+            {
+                <div class="alert alert-info">
+                    Brak zakończonych przejazdów.
+                </div>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var booking in ViewBag.CompletedBookings)
+                    {
+                        <div class="list-group-item shadow-sm mb-2">
+                            <div class="d-flex justify-content-between">
+                                <strong>
+                                    @booking.Ride.StartLocation.City →
+                                    @booking.Ride.EndLocation.City
+                                </strong>
+                                <span class="text-muted">
+                                    @booking.Ride.DepartureTime.ToString("dd.MM.yyyy HH:mm")
+                                </span>
+                            </div>
+
+                            <div class="mt-2 text-muted">
+                                Kierowca: @booking.Ride.Driver.User.FirstName
+                                @booking.Ride.Driver.User.LastName
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
         </div>
     </div>
 </div>

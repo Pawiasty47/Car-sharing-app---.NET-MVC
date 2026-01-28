@@ -18,22 +18,22 @@
                 @if (User.Identity?.IsAuthenticated ?? false)
                 {
                     // 1. Logika dla KIEROWCY
-                    if (User.IsInRole("Driver"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="DriverApplication" asp-action="Index">
-                                Panel Kierowcy
-                            </a>
-                        </li>
-                    }
-                    else
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="DriverApplication" asp-action="Index">
-                                Zostań Kierowcą
-                            </a>
-                        </li>
-                    }
+                    //if (User.IsInRole("Driver"))
+                    //{
+                        //<li class="nav-item">
+                            //<a class="nav-link" asp-controller="DriverApplication" asp-action="Index">
+                                //Panel Kierowcy
+                           // </a>
+                       // </li>
+                   // }
+                   // else
+                   // {
+                       // <li class="nav-item">
+                            //<a class="nav-link" asp-controller="DriverApplication" asp-action="Index">
+                               // Zostań Kierowcą
+                          //  </a>
+                       // </li>
+                   // }
 
                     // 2. Logika dla ADMINA (Ukryte dla zwykłych)
                     if (User.IsInRole("Admin"))

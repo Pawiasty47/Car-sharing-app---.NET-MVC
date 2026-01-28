@@ -1,0 +1,64 @@
+﻿@model projekt_zespołowy.Models.DriverProfile
+
+@{
+    ViewData["Title"] = "Edytuj profil kierowcy";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-secondary text-white text-center py-3">
+            <h3 class="mb-0">✏️ Edytuj profil kierowcy</h3>
+        </div>
+
+        <div class="card-body p-4">
+            <form asp-action="Edit"
+                  method="post"
+                  enctype="multipart/form-data">
+
+                <input type="hidden" asp-for="UserId" />
+
+                <!-- UPLOAD PRAWA JAZDY -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        📄 Zdjęcie prawa jazdy
+                    </label>
+
+                    <input type="file"
+                           name="licenseImage"
+                           class="form-control"
+                           accept="image/*" />
+
+                    <small class="text-muted">
+                        Dozwolone formaty: JPG, PNG. Maks. 5MB.
+                    </small>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.DrivingLicenseImageUrl))
+                {
+                    <div class="mb-4">
+                        <p class="fw-bold mb-2">Aktualne zdjęcie:</p>
+                        <img src="@Model.DrivingLicenseImageUrl"
+                             class="img-fluid rounded shadow"
+                             style="max-height:250px;" />
+                    </div>
+                }
+
+                <div class="alert alert-info">
+                    ℹ️ Liczba przejazdów i ocena są aktualizowane automatycznie.
+                </div>
+
+                <div class="text-end">
+                    <a asp-action="Index"
+                       class="btn btn-outline-secondary me-2">
+                        Anuluj
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        💾 Zapisz zmiany
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -7,14 +7,16 @@
     ViewData["Title"] = "Szczegóły przejazdu";
 
     var currentUser = await UserManager.GetUserAsync(User);
-    var isDriver = currentUser != null && Model.DriverId == currentUser.Id;
+    // Sprawdzamy, czy to kierowca LUB Admin
+    var isDriver = currentUser != null && (Model.DriverId == currentUser.Id || User.IsInRole("Admin"));
+
     var bookings = ViewBag.Bookings as List<Booking> ?? new List<Booking>();
     var myBooking = currentUser != null ? bookings.FirstOrDefault(b => b.PassengerUserId == currentUser.Id) : null;
     var isBooked = myBooking != null;
+
     var seatsAvailable = Model.SeatsOffered - Model.SeatsTaken;
     var hasBookings = bookings.Any();
 
-    // DODANE: słownik ocen pasażerów przekazany przez kontroler
     var passengerRatings = ViewBag.PassengerRatings as System.Collections.Generic.Dictionary<Guid, double> ?? new System.Collections.Generic.Dictionary<Guid, double>();
 }
 
@@ -111,86 +113,127 @@
 
             @if (isDriver)
             {
-                <div class="card border-success shadow-sm">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Lista Pasażerów</h5>
-                        <div>
-                            @if (!hasBookings)
-                            {
-                                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light me-1" title="Edytuj przejazd">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light" title="Usuń przejazd">
-                                    <i class="bi bi-trash"></i>
-                                </a>
-                            }
-                            else
-                            {
-                                <button type="button" class="btn btn-sm btn-outline-light me-1" disabled title="Zablokowane — są już zapisani pasażerowie">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-light" disabled title="Zablokowane — są już zapisani pasażerowie">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            }
+                // --- WIDOK DLA KIEROWCY ---
 
-                            @* Przyciski zakończenia / podsumowania przejazdu dla kierowcy *@
+                // 1. Sekcja: Prośby oczekujące (PENDING)
+                var pendingBookings = bookings.Where(b => b.Status == projekt_zespołowy.Models.BookingStatus.Pending).ToList();
+
+                if (pendingBookings.Any())
+                {
+                    <div class="card border-warning shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-hourglass-split me-2"></i>Oczekujące prośby</h5>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            @foreach (var b in pendingBookings)
+                            {
+                                <div class="list-group-item">
+                                    <div class="mb-2">
+                                        <strong>@b.Passenger?.FirstName @b.Passenger?.LastName</strong>
+                                        <br />
+                                        <small class="text-muted">Chce rezerwować: <span class="fw-bold text-dark">@b.SeatsRequested msc.</span></small>
+
+                                        @* ZMIANA: Wyświetlamy wiadomość pasażera WYRAŹNIE *@
+                                        @if (!string.IsNullOrEmpty(b.CommentByPassenger))
+                                        {
+                                            <div class="alert alert-light border p-2 mt-2 mb-1 small">
+                                                <i class="bi bi-chat-quote-fill me-1 text-primary"></i>
+                                                <span class="fst-italic">"@b.CommentByPassenger"</span>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="d-flex gap-2">
+                                        <form asp-controller="Booking" asp-action="Accept" method="post" class="flex-grow-1">
+                                            <input type="hidden" name="bookingId" value="@b.Id" />
+                                            <button type="submit" class="btn btn-sm btn-success w-100">
+                                                <i class="bi bi-check-lg"></i> Akceptuj
+                                            </button>
+                                        </form>
+
+                                        <button type="button" class="btn btn-sm btn-outline-danger w-100 flex-grow-1"
+                                                data-bs-toggle="modal" data-bs-target="#rejectModal-@b.Id">
+                                            <i class="bi bi-x-lg"></i> Odrzuć
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="modal fade" id="rejectModal-@b.Id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <form asp-controller="Booking" asp-action="Reject" method="post">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title">Odrzuć rezerwację</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-start">
+                                                    <p>Czy na pewno odrzucić pasażera <strong>@b.Passenger?.FirstName</strong>?</p>
+                                                    <input type="hidden" name="bookingId" value="@b.Id" />
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold small">Powód (opcjonalny):</label>
+                                                        <textarea name="reason" class="form-control" rows="3"
+                                                      placeholder="np. Brak miejsca na duży bagaż..."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                                                    <button type="submit" class="btn btn-danger">Potwierdź</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                // 2. Sekcja: Pasażerowie zatwierdzeni (CONFIRMED)
+                var confirmedBookings = bookings.Where(b => b.Status == projekt_zespołowy.Models.BookingStatus.Confirmed).ToList();
+
+                <div class="card border-success shadow-sm mb-3">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Pasażerowie</h5>
+                        <div>
                             @if (Model.Status != RideStatus.Completed)
                             {
                                 <form asp-action="Complete" method="post" class="d-inline ms-2">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-light" onclick="return confirm('Zakończyć przejazd?')"
-                                            title="Zakończ przejazd">
+                                    <button type="submit" class="btn btn-sm btn-outline-light" onclick="return confirm('Zakończyć przejazd?')" title="Zakończ przejazd">
                                         <i class="bi bi-check2-circle"></i>
                                     </button>
                                 </form>
                             }
                             else
                             {
-                                <a asp-action="Summary" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light ms-2" title="Podsumowanie przejazdu">
+                                <a asp-action="Summary" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light ms-2" title="Podsumowanie">
                                     <i class="bi bi-file-earmark-text"></i>
                                 </a>
                             }
                         </div>
                     </div>
+
                     <div class="card-body p-0">
-                        @if (bookings.Any())
+                        @if (confirmedBookings.Any())
                         {
                             <div class="list-group list-group-flush">
-                                @foreach (var b in bookings)
+                                @foreach (var b in confirmedBookings)
                                 {
                                     <div class="list-group-item">
-                                        <div class="row align-items-center g-3">
-                                            <div class="col-auto">
-                                                <span class="badge bg-primary text-white rounded-pill">
-                                                    @b.SeatsRequested
-                                                </span>
-                                            </div>
-                                            <div class="col">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <h6 class="mb-0">
-                                                        @b.Passenger?.FirstName @b.Passenger?.LastName
-                                                        @* DODANE: pokazanie oceny pasażera obok imienia (jeśli jest dostępna) *@
-                                                        <small class="text-warning ms-2">
-                                                            @(
-                                                                passengerRatings.ContainsKey(b.PassengerUserId)
-                                                                ? $"★ {passengerRatings[b.PassengerUserId].ToString("0.0")}/5"
-                                                                : "—"
-                                                            )
-                                                        </small>
-                                                    </h6>
-                                                    <small class="text-muted">
-                                                        @b.CreatedAt.ToString("dd.MM.yyyy")
-                                                    </small>
-                                                </div>
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-0 fw-bold">@b.Passenger?.FirstName @b.Passenger?.LastName</h6>
+                                                <p class="mb-1 text-muted small">
+                                                    <i class="bi bi-telephone me-1"></i> @(b.Passenger?.PhoneNumber ?? "Brak telefonu")
+                                                </p>
                                                 @if (!string.IsNullOrEmpty(b.CommentByPassenger))
                                                 {
-                                                    <p class="mb-0 fst-italic text-muted">
-                                                        "@b.CommentByPassenger"
-                                                    </p>
+                                                    <small class="fst-italic text-primary">"@b.CommentByPassenger"</small>
                                                 }
                                             </div>
+                                            <span class="badge bg-primary rounded-pill">@b.SeatsRequested msc.</span>
                                         </div>
                                     </div>
                                 }
@@ -198,27 +241,59 @@
                         }
                         else
                         {
-                            <div class="p-3 text-center text-muted">
-                                Brak pasażerów jeszcze
+                            <div class="text-center p-4 text-muted">
+                                <i class="bi bi-person-slash fs-1"></i>
+                                <p class="mt-2 mb-0">Brak potwierdzonych pasażerów.</p>
                             </div>
                         }
+                    </div>
+                    <div class="card-footer text-muted small text-center">
+                        Zajęte miejsca: @Model.SeatsTaken / @Model.SeatsOffered
                     </div>
                 </div>
             }
             else
             {
+                // --- WIDOK DLA PASAŻERA ---
                 <div class="card shadow-sm sticky-top" style="top: 20px; z-index: 1;">
                     <div class="card-body text-center">
                         <h5 class="text-uppercase text-muted small fw-bold mb-3">Dostępność miejsc</h5>
 
-                        @if (isBooked)
+                        @if (myBooking != null)
                         {
-                            <div class="alert alert-success border-success">
-                                <i class="bi bi-ticket-perforated-fill fs-1 d-block mb-2"></i>
-                                <h4 class="alert-heading">Rezerwacja potwierdzona!</h4>
-                                <p class="mb-0">Twoje miejsce jest zarezerwowane.</p>
-                                <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-success mt-2">Zobacz rezerwacje</a>
-                            </div>
+                            if (myBooking.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
+                            {
+                                <div class="alert alert-success border-success">
+                                    <i class="bi bi-ticket-perforated-fill fs-1 d-block mb-2"></i>
+                                    <h4 class="alert-heading">Rezerwacja potwierdzona!</h4>
+                                    <p class="mb-0">Twoje miejsce jest zarezerwowane.</p>
+                                    <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-success mt-2">Zobacz bilet</a>
+                                </div>
+                            }
+                            else if (myBooking.Status == projekt_zespołowy.Models.BookingStatus.Pending)
+                            {
+                                <div class="alert alert-warning border-warning text-dark">
+                                    <i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>
+                                    <h4 class="alert-heading">Oczekiwanie</h4>
+                                    <p class="mb-0">Wysłano prośbę do kierowcy. Czekaj na akceptację.</p>
+                                </div>
+                            }
+                            else if (myBooking.Status == projekt_zespołowy.Models.BookingStatus.Rejected)
+                            {
+                                <div class="alert alert-danger border-danger">
+                                    <i class="bi bi-x-circle fs-1 d-block mb-2"></i>
+                                    <h4 class="alert-heading">Odrzucono</h4>
+                                    <p class="mb-2">Kierowca odrzucił Twoją prośbę.</p>
+
+                                    @* ZMIANA: Wyświetlanie powodu odrzucenia dla pasażera *@
+                                    @if (!string.IsNullOrEmpty(myBooking.CommentByDriver))
+                                    {
+                                        <div class="bg-white p-2 rounded text-start small border border-danger border-opacity-25">
+                                            <strong>Powód:</strong> <span class="fst-italic">@myBooking.CommentByDriver</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         }
                         else if (seatsAvailable <= 0)
                         {
@@ -236,7 +311,6 @@
                             @if (currentUser != null)
                             {
                                 <form asp-controller="Booking" asp-action="Create" method="post">
-                                    @Html.AntiForgeryToken()
                                     <input type="hidden" name="rideId" value="@Model.Id" />
 
                                     <div class="mb-3 text-start">
@@ -244,7 +318,7 @@
                                         <select name="seats" class="form-select">
                                             @for (int i = 1; i <= seatsAvailable && i <= 4; i++)
                                             {
-                                                <option value="@i">@i @((i == 1) ? "osoba" : (i >= 2 && i <= 4) ? "osoby" : "osób")</option>
+                                                <option value="@i">@i osoba@(i > 1 ? "y" : "")</option>
                                             }
                                         </select>
                                     </div>
@@ -255,20 +329,17 @@
                                     </div>
 
                                     <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
-                                        Rezerwuję miejsce
+                                        Poproś o rezerwację
                                     </button>
                                 </form>
                             }
                             else
                             {
-                                <div class="alert alert-warning">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    Zaloguj się, aby móc dokonać rezerwacji.
+                                <div class="d-grid">
+                                    <a asp-controller="Account" asp-action="Login" class="btn btn-primary">
+                                        Zaloguj się, aby zarezerwować
+                                    </a>
                                 </div>
-
-                                <a asp-controller="Account" asp-action="Login" class="btn btn-primary w-100 mt-2">
-                                    <i class="bi bi-box-arrow-in-right me-2"></i> Zaloguj się
-                                </a>
                             }
                         }
                     </div>

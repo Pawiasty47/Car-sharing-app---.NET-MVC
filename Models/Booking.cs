@@ -23,7 +23,7 @@ namespace projekt_zespołowy.Models
 
         public int SeatsRequested { get; set; } = 1;
 
-        public BookingStatus Status { get; set; } = BookingStatus.Confirmed; // Domyślnie potwierdzona dla uproszczenia MVP
+        public BookingStatus Status { get; set; } = BookingStatus.Pending; // Domyślnie potwierdzona dla uproszczenia MVP
         public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.NotRequired;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

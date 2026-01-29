@@ -64,7 +64,7 @@ namespace projekt_zespołowy
                             User = adminUser,
                             Rating = 0.0, // zmienione z 5.0 na 0.0
                             CompletedBookingsCount = 0,
-                            PrefersNonSmoking = true,
+                            IsSmoker = true,
                             PrefersQuietRide = true
                         });
                     }

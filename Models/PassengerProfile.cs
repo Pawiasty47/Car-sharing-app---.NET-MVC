@@ -14,14 +14,14 @@ namespace projekt_zespołowy.Models
 
         // Preferncje
 
-        public bool PrefersNonSmoking { get; set; } = true; // Papierosy
-        public bool PrefersQuietRide { get; set; } = false; // Rozmowa vs Cisza
+        public bool IsSmoker { get; set; }
+        public bool PrefersQuietRide { get; set; }
 
-        public bool PrefersMusic { get; set; } = true;      // NOWE: Muzyka
-        public bool AcceptsPets { get; set; } = false;      // NOWE: Zwierzęta
-        public bool AcceptsEating { get; set; } = false;    // NOWE: Jedzenie w aucie
+        public bool PrefersMusic { get; set; }
+        public bool AcceptsPets { get; set; }
+        public bool AcceptsEating { get; set; }
 
         // --- ZDJĘCIE ---
-        public byte[]? ProfilePicture { get; set; } // NOWE: Zdjęcie trzymane jako ciąg bajtów
+        public byte[]? ProfilePicture { get; set; } // Zdjęcie trzymane jako ciąg bajtów
     }
 }

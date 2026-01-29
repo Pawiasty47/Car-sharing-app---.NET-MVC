@@ -65,7 +65,7 @@ namespace projekt_zespołowy.Controllers
                 PhoneNumber = user.PhoneNumber,
                 ExistingProfilePicture = profile.ProfilePicture,
 
-                PrefersNonSmoking = profile.PrefersNonSmoking,
+                IsSmoker = profile.IsSmoker,
                 PrefersQuietRide = profile.PrefersQuietRide,
                 PrefersMusic = profile.PrefersMusic,
                 AcceptsPets = profile.AcceptsPets,
@@ -102,7 +102,7 @@ namespace projekt_zespołowy.Controllers
                 PhoneNumber = user.PhoneNumber,
                 ExistingProfilePicture = profile.ProfilePicture,
 
-                PrefersNonSmoking = profile.PrefersNonSmoking,
+                IsSmoker = profile.IsSmoker,
                 PrefersQuietRide = profile.PrefersQuietRide,
                 PrefersMusic = profile.PrefersMusic,
                 AcceptsPets = profile.AcceptsPets,
@@ -138,7 +138,7 @@ namespace projekt_zespołowy.Controllers
 
             if (profile != null)
             {
-                profile.PrefersNonSmoking = model.PrefersNonSmoking;
+                profile.IsSmoker = model.IsSmoker;
                 profile.PrefersQuietRide = model.PrefersQuietRide;
                 profile.PrefersMusic = model.PrefersMusic;
                 profile.AcceptsPets = model.AcceptsPets;

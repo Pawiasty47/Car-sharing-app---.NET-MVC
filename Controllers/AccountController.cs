@@ -57,7 +57,7 @@ public class AccountController : Controller
             User = user,
             Rating = 5.0,
             CompletedBookingsCount = 0,
-            PrefersNonSmoking = true,
+            IsSmoker = false,
             PrefersQuietRide = false
         });
 

@@ -11,7 +11,7 @@ namespace projekt_zespołowy.Models.ViewModels
         public string? PhoneNumber { get; set; }
 
         // Preferencje
-        public bool PrefersNonSmoking { get; set; }
+        public bool IsSmoker { get; set; }
         public bool PrefersQuietRide { get; set; }
         public bool PrefersMusic { get; set; }
         public bool AcceptsPets { get; set; }

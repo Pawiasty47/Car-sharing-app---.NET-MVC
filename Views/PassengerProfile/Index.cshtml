@@ -5,192 +5,187 @@
 }
 
 <div class="container mt-5">
-    <div class="card shadow-lg border-0">
-        <div class="card-header bg-success text-white text-center py-4">
-            <h2 class="mb-0">Mój Profil</h2>
-        </div>
+
+    <div class="card shadow-sm border-0">
         <div class="card-body p-5">
 
             <div class="row align-items-center mb-5">
-                <div class="col-md-4 text-center">
+                <div class="col-md-3 text-center mb-3 mb-md-0">
                     @if (Model.ExistingProfilePicture != null)
                     {
                         <img src="data:image/*;base64,@(Convert.ToBase64String(Model.ExistingProfilePicture))"
-                             class="rounded-circle shadow" style="width: 180px; height: 180px; object-fit: cover;" />
+                             class="rounded-circle shadow-sm"
+                             style="width: 150px; height: 150px; object-fit: cover;" />
                     }
                     else
                     {
-                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto shadow"
-                             style="width: 180px; height: 180px; font-size: 80px;">
-                            👤
+                        <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center text-secondary shadow-sm"
+                             style="width: 150px; height: 150px;">
+                            <i class="bi bi-person-fill" style="font-size: 5rem;"></i>
                         </div>
                     }
                 </div>
 
-                <div class="col-md-8">
-                    <h2 class="fw-bold">@Model.FirstName @Model.LastName</h2>
-                    <p class="text-muted fs-5">@Model.Email</p>
-                    <p class="fs-5">@(Model.PhoneNumber ?? "Brak telefonu")</p>
+                <div class="col-md-9">
+                    <h2 class="fw-bold text-success mb-1">@Model.FirstName @Model.LastName</h2>
+                    <p class="text-muted mb-1">@Model.Email</p>
+                    <p class="text-muted mb-3">@(Model.PhoneNumber ?? "Brak numeru telefonu")</p>
 
-                    @* Sekcja ocen: ukryta dla kont administratora *@
                     @if (!User.IsInRole("Admin"))
                     {
-                        <div class="mt-3">
+                        <div class="d-flex flex-wrap gap-3 mt-3">
                             @if (Model.IsDriver)
                             {
-                                <div class="d-flex gap-2 align-items-center">
-                                    <span class="badge bg-warning text-dark p-2">
-                                        Ocena jako kierowca:
+                                <div class="border rounded px-3 py-2 text-center">
+                                    <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">Kierowca</small>
+                                    <span class="fw-bold text-success">
                                         @if (Model.DriverRating.HasValue && Model.DriverRating.Value > 0)
                                         {
-                                            <strong>★ @Model.DriverRating.Value.ToString("0.0") / 5</strong>
+                                            <span>@Model.DriverRating.Value.ToString("0.0") / 5</span>
                                         }
                                         else
                                         {
-                                            <strong>Brak ocen</strong>
+                                            <span>Brak ocen</span>
                                         }
                                     </span>
+                                </div>
+                            }
 
-                                    <span class="badge bg-info text-white p-2">
-                                        Ocena jako pasażer:
-                                        @if (Model.PassengerRating > 0)
-                                        {
-                                            <strong>★ @Model.PassengerRating.ToString("0.0") / 5</strong>
-                                        }
-                                        else
-                                        {
-                                            <strong>Brak ocen</strong>
-                                        }
-                                    </span>
-                                </div>
-                            }
-                            else
-                            {
-                                <div>
-                                    <span class="badge bg-info text-white p-2">
-                                        Ocena:
-                                        @if (Model.PassengerRating > 0)
-                                        {
-                                            <strong>★ @Model.PassengerRating.ToString("0.0") / 5</strong>
-                                        }
-                                        else
-                                        {
-                                            <strong>Brak ocen</strong>
-                                        }
-                                    </span>
-                                </div>
-                            }
+                            <div class="border rounded px-3 py-2 text-center">
+                                <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">Pasażer</small>
+                                <span class="fw-bold text-success">
+                                    @if (Model.PassengerRating > 0)
+                                    {
+                                        <span>@Model.PassengerRating.ToString("0.0") / 5</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Brak ocen</span>
+                                    }
+                                </span>
+                            </div>
                         </div>
                     }
                 </div>
             </div>
 
-            <hr />
+            <hr class="my-4 text-muted opacity-25" />
 
-            <h4 class="mb-4 text-secondary">Preferencje</h4>
-            <div class="d-flex flex-wrap gap-3">
-                <span class="badge rounded-pill p-3 @(Model.PrefersMusic ? "bg-success" : "bg-light text-secondary border")">
-                    @(Model.PrefersMusic ? "Lubię muzykę" : "Bez głośnej muzyki")
-                </span>
+            <div class="mb-5">
+                <h4 class="fw-bold mb-3 text-secondary">Preferencje podróży</h4>
 
-                <span class="badge rounded-pill p-3 @(Model.AcceptsPets ? "bg-success" : "bg-light text-secondary border")">
-                    @(Model.AcceptsPets ? "Akceptuję zwierzęta" : "Nie akceptuję zwierząt")
-                </span>
+                <div class="d-flex flex-wrap gap-2">
+                    @* Wyświetlamy TYLKO pozytywne cechy (gdy true) *@
 
-                <span class="badge rounded-pill p-3 @(Model.AcceptsEating ? "bg-success" : "bg-light text-secondary border")">
-                    @(Model.AcceptsEating ? "Nie przeszkadza mi jedzenie" : "Nie toleruję jedzenia")
-                </span>
+                    @if (Model.PrefersMusic)
+                    {
+                        <span class="badge bg-success fw-normal px-3 py-2">Lubię muzykę</span>
+                    }
 
-                <span class="badge rounded-pill p-3 @(Model.PrefersQuietRide ? "bg-success" : "bg-light text-secondary border")">
-                    @(Model.PrefersQuietRide ? "Chętnie porozmawiam" : "Preferuję ciszę")
-                </span>
+                    @if (Model.AcceptsPets)
+                    {
+                        <span class="badge bg-success fw-normal px-3 py-2">Akceptuję zwierzęta</span>
+                    }
 
-                <span class="badge rounded-pill p-3 @(Model.PrefersNonSmoking ? "bg-success" : "bg-light text-secondary border")">
-                    @(Model.PrefersNonSmoking ? "Palący" : "Nie toleruję palenia")
-                </span>
+                    @if (Model.AcceptsEating)
+                    {
+                        <span class="badge bg-success fw-normal px-3 py-2">Można jeść</span>
+                    }
+
+                    @* Bazując na Twoim starym kodzie: true = "Chętnie porozmawiam" *@
+                    @if (Model.PrefersQuietRide)
+                    {
+                        <span class="badge bg-success fw-normal px-3 py-2">Lubię rozmawiać</span>
+                    }
+
+                    @* Bazując na Twoim starym kodzie: true = "Palący" *@
+                    @if (Model.IsSmoker)
+                    {
+                        <span class="badge bg-secondary fw-normal px-3 py-2">Palący</span>
+                    }
+
+                    @* Jeśli wszystko jest na false (nowy użytkownik), wyświetl info *@
+                    @if (!Model.PrefersMusic && !Model.AcceptsPets && !Model.AcceptsEating && !Model.PrefersQuietRide && !Model.IsSmoker)
+                    {
+                        <span class="text-muted fst-italic">
+                            Nie ustawiono jeszcze preferencji. Kliknij "Edytuj profil", aby dodać informacje o sobie.
+                        </span>
+                    }
+                </div>
             </div>
 
-            <div class="mt-5 text-end">
-                <a asp-controller="Booking" asp-action="Index" class="btn btn-primary btn-lg me-2 shadow-sm">
-                    🎫 Moje rezerwacje
-                </a>
-                <a asp-action="Edit" class="btn btn-outline-success btn-lg me-2">
-                    ✏️ Edytuj profil
+            <div class="d-flex flex-wrap gap-3">
+                <a asp-controller="Booking" asp-action="Index" class="btn btn-success px-4">
+                    <i class="bi bi-ticket-perforated me-2"></i> Moje rezerwacje
                 </a>
 
-                @* Jeśli użytkownik NIE jest w roli Driver -> przekieruj do formularza wniosku o zostanie kierowcą.
-                   Jeśli jest kierowcą -> pokaż przycisk do profilu kierowcy. *@
+                <a asp-action="Edit" class="btn btn-outline-success px-4">
+                    <i class="bi bi-pencil me-2"></i> Edytuj profil
+                </a>
+
                 @if (!User.IsInRole("Driver"))
                 {
-                    <a asp-controller="DriverApplication"
-                       asp-action="Index"
-                       class="btn btn-warning btn-lg">
-                        🚗 Zostań kierowcą
+                    <a asp-controller="DriverApplication" asp-action="Index" class="btn btn-outline-dark px-4">
+                        <i class="bi bi-car-front me-2"></i> Zostań kierowcą
                     </a>
                 }
                 else
                 {
-                    <a asp-controller="DriverProfile"
-                       asp-action="Index"
-                       class="btn btn-outline-primary btn-lg">
-                        🚘 Profil kierowcy
+                    <a asp-controller="DriverProfile" asp-action="Index" class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-speedometer2 me-2"></i> Profil kierowcy
                     </a>
                 }
-
             </div>
 
             @if (User.IsInRole("Admin"))
             {
-                <hr class="my-5" />
-                <div class="alert alert-danger shadow-sm">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h4 class="alert-heading mb-1">🛠️ Panel Administratora</h4>
-                            <p class="mb-0">Masz uprawnienia do zarządzania użytkownikami systemu.</p>
+                <div class="mt-5 pt-3 border-top">
+                    <div class="alert alert-light border d-flex align-items-center justify-content-between">
+                        <div>
+                            <strong class="text-danger"><i class="bi bi-shield-lock me-2"></i>Panel Administratora</strong>
+                            <div class="small text-muted">Zarządzanie użytkownikami i systemem</div>
                         </div>
-                        <div class="col-md-4 text-end">
-                            <a asp-controller="Admin" asp-action="Users" class="btn btn-danger btn-lg w-100">
-                                👥 Panel Administratora
-                            </a>
-                        </div>
+                        <a asp-controller="Admin" asp-action="Users" class="btn btn-sm btn-outline-danger">
+                            Przejdź do panelu
+                        </a>
                     </div>
-                </div>
-            }
-            <hr class="my-5" />
-
-            <h4 class="mb-4 text-secondary">🧾 Zakończone przejazdy (jako pasażer)</h4>
-
-            @if (ViewBag.CompletedBookings.Count == 0)
-            {
-                <div class="alert alert-info">
-                    Brak zakończonych przejazdów.
-                </div>
-            }
-            else
-            {
-                <div class="list-group">
-                    @foreach (var booking in ViewBag.CompletedBookings)
-                    {
-                        <div class="list-group-item shadow-sm mb-2">
-                            <div class="d-flex justify-content-between">
-                                <strong>
-                                    @booking.Ride.StartLocation.City →
-                                    @booking.Ride.EndLocation.City
-                                </strong>
-                                <span class="text-muted">
-                                    @booking.Ride.DepartureTime.ToString("dd.MM.yyyy HH:mm")
-                                </span>
-                            </div>
-
-                            <div class="mt-2 text-muted">
-                                Kierowca: @booking.Ride.Driver.User.FirstName
-                                @booking.Ride.Driver.User.LastName
-                            </div>
-                        </div>
-                    }
                 </div>
             }
 
         </div>
+    </div>
+
+    <div class="mt-5 mb-5">
+        <h4 class="fw-bold mb-4 text-secondary">Zakończone przejazdy (Pasażer)</h4>
+
+        @if (ViewBag.CompletedBookings == null || ViewBag.CompletedBookings.Count == 0)
+        {
+            <div class="alert alert-light border text-center py-4 text-muted">
+                Brak zakończonych przejazdów w historii.
+            </div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var booking in ViewBag.CompletedBookings)
+                {
+                    <div class="list-group-item border-0 shadow-sm mb-2 rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1 text-success">
+                                    @booking.Ride.StartLocation.City <i class="bi bi-arrow-right-short mx-1"></i> @booking.Ride.EndLocation.City
+                                </h5>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar-event me-1"></i> @booking.Ride.DepartureTime.ToString("dd.MM.yyyy, HH:mm")
+                                </small>
+                            </div>
+                            <div class="text-end text-muted small">
+                                <i class="bi bi-person me-1"></i> @booking.Ride.Driver.User.FirstName @booking.Ride.Driver.User.LastName
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     </div>
 </div>

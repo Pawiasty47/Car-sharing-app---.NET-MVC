@@ -44,7 +44,9 @@ namespace projekt_zespołowy.Controllers
                 query = query.Where(r => r.DepartureTime.Date == searchDate.Value.Date);
             }
 
-            query = query.Where(r => r.Status == RideStatus.Published || r.Status == RideStatus.InProgress);
+            query = query.Where(r =>
+                (r.Status == RideStatus.Published || r.Status == RideStatus.InProgress)
+                && r.DepartureTime >= DateTime.Now);
 
             var rides = await query
                 .OrderByDescending(r => r.DepartureTime)
@@ -55,6 +57,46 @@ namespace projekt_zespołowy.Controllers
             ViewData["CurrentFilterDate"] = searchDate?.ToString("yyyy-MM-dd");
 
             ViewBag.IsMyRidesMode = false;
+
+            return View(rides);
+        }
+
+        public async Task<IActionResult> Archival(string searchFrom, string searchTo, DateTime? searchDate)
+        {
+            var query = _context.OfferedRides
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver).ThenInclude(d => d.User)
+                .Include(r => r.StartLocation)
+                .Include(r => r.EndLocation)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchFrom))
+            {
+                query = query.Where(r => r.StartLocation.City.Contains(searchFrom) || r.StartLocation.Name.Contains(searchFrom));
+            }
+
+            if (!string.IsNullOrEmpty(searchTo))
+            {
+                query = query.Where(r => r.EndLocation.City.Contains(searchTo) || r.EndLocation.Name.Contains(searchTo));
+            }
+
+            if (searchDate.HasValue)
+            {
+                query = query.Where(r => r.DepartureTime.Date == searchDate.Value.Date);
+            }
+
+            query = query.Where(r =>
+                r.Status == RideStatus.Completed
+                || r.Status == RideStatus.Cancelled
+                || r.DepartureTime < DateTime.Now);
+
+            var rides = await query
+                .OrderByDescending(r => r.DepartureTime)
+                .ToListAsync();
+
+            ViewData["CurrentFilterFrom"] = searchFrom;
+            ViewData["CurrentFilterTo"] = searchTo;
+            ViewData["CurrentFilterDate"] = searchDate?.ToString("yyyy-MM-dd");
 
             return View(rides);
         }
@@ -178,6 +220,7 @@ namespace projekt_zespołowy.Controllers
         }
 
         // --- Create (POST) - POPRAWIONE ---
+        // --- Create (POST) - POPRAWIONE ---
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -189,11 +232,22 @@ namespace projekt_zespołowy.Controllers
             ModelState.Remove("EndLocation.Latitude");
             ModelState.Remove("EndLocation.Longtitude");
 
+            // --- DODANA WALIDACJA DAT ---
+            if (model.DepartureTime < DateTime.Now)
+            {
+                ModelState.AddModelError("DepartureTime", "Data wyjazdu nie może być w przeszłości.");
+            }
+
+            if (model.ArrivalTime.HasValue && model.ArrivalTime.Value <= model.DepartureTime)
+            {
+                ModelState.AddModelError("ArrivalTime", "Data przyjazdu musi być późniejsza niż data wyjazdu.");
+            }
+            // ----------------------------
+
             if (!ModelState.IsValid)
             {
                 var uid = _userManager.GetUserId(User);
                 if (User.IsInRole("Admin"))
-                    // FIX: Usunięto .ThenInclude(o => o.User)
                     model.AvailableVehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync();
                 else
                     model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == uid).ToListAsync();
@@ -222,7 +276,6 @@ namespace projekt_zespołowy.Controllers
 
                 var uid = _userManager.GetUserId(User);
                 if (isAdmin)
-                    // FIX: Usunięto .ThenInclude(o => o.User)
                     model.AvailableVehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync();
                 else
                     model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == uid).ToListAsync();
@@ -329,6 +382,7 @@ namespace projekt_zespołowy.Controllers
         }
 
         // Edit (POST)
+        // Edit (POST)
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -336,6 +390,18 @@ namespace projekt_zespołowy.Controllers
         {
             ModelState.Remove("AvailableVehicles");
             var userId = _userManager.GetUserId(User);
+
+            // --- DODANA WALIDACJA DAT ---
+            if (model.DepartureTime < DateTime.Now)
+            {
+                ModelState.AddModelError("DepartureTime", "Data wyjazdu nie może być w przeszłości.");
+            }
+
+            if (model.ArrivalTime.HasValue && model.ArrivalTime.Value <= model.DepartureTime)
+            {
+                ModelState.AddModelError("ArrivalTime", "Data przyjazdu musi być późniejsza niż data wyjazdu.");
+            }
+            // ----------------------------
 
             if (!ModelState.IsValid)
             {

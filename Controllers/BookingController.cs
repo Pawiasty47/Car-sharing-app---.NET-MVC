@@ -52,7 +52,7 @@ namespace projekt_zespołowy.Controllers
                 return RedirectToAction("Details", "Rides", new { id = rideId });
             }
 
-            // Walidacja: Dostępność miejsc (wstępna)
+            // Walidacja: Dostępność miejsc (wstępna - zablokowanie overbookingu)
             if ((ride.SeatsOffered - ride.SeatsTaken) < seats)
             {
                 TempData["ErrorMessage"] = "Brak wystarczającej liczby wolnych miejsc.";
@@ -80,12 +80,13 @@ namespace projekt_zespołowy.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            // WAŻNE: Nie zwiększamy ride.SeatsTaken tutaj. Robimy to dopiero przy akceptacji.
+            // ZMIANA: Natychmiastowo zajmujemy miejsce, mimo że to "Pending". Zapobiega overbookingowi.
+            ride.SeatsTaken += seats;
 
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Wysłano prośbę o rezerwację! Czekaj na potwierdzenie kierowcy.";
+            TempData["SuccessMessage"] = "Wysłano prośbę o rezerwację! Miejsce zostało dla Ciebie zablokowane.";
             return RedirectToAction("Details", "Rides", new { id = rideId });
         }
 
@@ -102,33 +103,26 @@ namespace projekt_zespołowy.Controllers
 
             var user = await _userManager.GetUserAsync(User);
 
-            // POPRAWKA: Dodano obsługę Admina
             if (booking.Ride.DriverId != user.Id && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
 
-            // Sprawdź czy NADAL są miejsca (mogły zniknąć w międzyczasie)
-            if ((booking.Ride.SeatsOffered - booking.Ride.SeatsTaken) < booking.SeatsRequested)
-            {
-                TempData["ErrorMessage"] = "Nie możesz zaakceptować - brak wolnych miejsc w pojeździe!";
-                return RedirectToAction("Details", "Rides", new { id = booking.RideId });
-            }
+            // ZMIANA: Usunięto sprawdzanie dostępności miejsc i powiększanie SeatsTaken.
+            // Zrobiliśmy to już w metodzie Create!
 
-            // Zmiana statusu i zajęcie miejsc
             booking.Status = BookingStatus.Confirmed;
-            booking.Ride.SeatsTaken += booking.SeatsRequested;
 
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Zaakceptowano pasażera. Miejsca zostały zaktualizowane.";
+            TempData["SuccessMessage"] = "Zaakceptowano pasażera.";
             return RedirectToAction("Details", "Rides", new { id = booking.RideId });
         }
 
         // 4. ODRZUCENIE PASAŻERA Z POWODEM (Dla Kierowcy i Admina)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Reject(Guid bookingId, string? reason) // <--- ZMIANA: Dodano parametr reason
+        public async Task<IActionResult> Reject(Guid bookingId, string? reason)
         {
             var booking = await _context.Bookings
                 .Include(b => b.Ride)
@@ -138,20 +132,24 @@ namespace projekt_zespołowy.Controllers
 
             var user = await _userManager.GetUserAsync(User);
 
-            // Sprawdzenie uprawnień: Właściciel lub Admin
             if (booking.Ride.DriverId != user.Id && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
 
-            booking.Status = BookingStatus.Rejected;
-            booking.CommentByDriver = reason; // <--- ZMIANA: Zapisujemy powód w bazie
+            // ZMIANA: Skoro przy "Pending" zajęliśmy miejsca, to przy odrzuceniu musimy je oddać!
+            if (booking.Status == BookingStatus.Pending && booking.Ride != null)
+            {
+                booking.Ride.SeatsTaken -= booking.SeatsRequested;
+                if (booking.Ride.SeatsTaken < 0) booking.Ride.SeatsTaken = 0; // Zabezpieczenie na wszelki wypadek
+            }
 
-            // Nie zwalniamy miejsc, bo przy statusie Pending (oczekująca) nie były one zajęte
+            booking.Status = BookingStatus.Rejected;
+            booking.CommentByDriver = reason;
 
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Odrzucono prośbę o rezerwację.";
+            TempData["SuccessMessage"] = "Odrzucono prośbę o rezerwację. Miejsca wróciły do puli.";
             return RedirectToAction("Details", "Rides", new { id = booking.RideId });
         }
 
@@ -167,24 +165,27 @@ namespace projekt_zespołowy.Controllers
 
             if (booking == null) return NotFound();
 
-            // Tylko właściciel rezerwacji może ją anulować
             if (booking.PassengerUserId != user.Id) return Forbid();
 
-            // POPRAWKA LOGIKI:
-            // Scenariusz A: Rezerwacja była ZATWIERDZONA -> Zwalniamy miejsce w aucie i oznaczamy jako Anulowana
-            if (booking.Status == BookingStatus.Confirmed && booking.Ride != null)
+            // ZMIANA LOGIKI ZWALNIANIA MIEJSC:
+            // Musimy oddać miejsca, jeśli pasażer zrezygnuje zarówno jako ZATWIERDZONY, jak i w trakcie OCZEKIWANIA
+            if ((booking.Status == BookingStatus.Confirmed || booking.Status == BookingStatus.Pending) && booking.Ride != null)
             {
                 booking.Ride.SeatsTaken -= booking.SeatsRequested;
                 if (booking.Ride.SeatsTaken < 0) booking.Ride.SeatsTaken = 0;
-
-                booking.Status = BookingStatus.Cancelled;
-                TempData["SuccessMessage"] = "Rezerwacja została anulowana. Miejsca zwolnione.";
             }
-            // Scenariusz B: Rezerwacja była PENDING, REJECTED lub już CANCELLED -> Usuwamy fizycznie (sprzątanie listy)
+
+            if (booking.Status == BookingStatus.Confirmed)
+            {
+                booking.Status = BookingStatus.Cancelled;
+                TempData["SuccessMessage"] = "Rezerwacja została anulowana. Zarezerwowane miejsca zostały zwolnione.";
+            }
             else
             {
+                // Jeśli był Pending, Rejected lub już Cancelled -> po prostu usuwamy z listy,
+                // a jeśli był Pending, to miejsca zostały oddane parę linijek wyżej.
                 _context.Bookings.Remove(booking);
-                TempData["SuccessMessage"] = "Rezerwacja została usunięta z listy.";
+                TempData["SuccessMessage"] = "Zgłoszenie zostało usunięte z Twojej listy.";
             }
 
             await _context.SaveChangesAsync();

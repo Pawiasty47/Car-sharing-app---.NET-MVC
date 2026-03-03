@@ -635,6 +635,8 @@ namespace projekt_zespołowy.Controllers
             return View(ride);
         }
 
+
+
         // Delete (POST)
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
@@ -662,6 +664,61 @@ namespace projekt_zespołowy.Controllers
 
             TempData["SuccessMessage"] = "Przejazd został usunięty!";
             return RedirectToAction(nameof(Index));
+        }
+
+        // --- AWARYJNE ODWOŁANIE PRZEJAZDU PRZEZ KIEROWCĘ ---
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelRide(Guid id)
+        {
+            var ride = await _context.OfferedRides
+                .Include(r => r.Bookings)
+                .Include(r => r.StartLocation) 
+                .Include(r => r.EndLocation)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (ride == null) return NotFound();
+
+            var userId = _userManager.GetUserId(User);
+
+            if (!User.IsInRole("Admin") && ride.DriverId.ToString() != userId)
+            {
+                return Forbid();
+            }
+
+            if (ride.Status == RideStatus.Cancelled || ride.Status == RideStatus.Completed)
+            {
+                TempData["ErrorMessage"] = "Tego przejazdu nie można już odwołać.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            ride.Status = RideStatus.Cancelled;
+
+            foreach (var booking in ride.Bookings)
+            {
+                if (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed)
+                {
+                    booking.Status = BookingStatus.Cancelled;
+                    booking.CommentByDriver = "Przejazd został awaryjnie odwołany przez kierowcę.";
+
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = booking.PassengerUserId,
+                        Title = "Ważne: Przejazd odwołany!",
+                        Body = $"Kierowca awaryjnie odwołał przejazd na trasie {ride.StartLocation?.City} - {ride.EndLocation?.City} z dnia {ride.DepartureTime:dd.MM.yyyy HH:mm}.",
+                        CreatedAt = DateTime.UtcNow,
+                        IsRead = false
+                    };
+                    _context.Notifications.Add(notification);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Przejazd został awaryjnie odwołany. Zapisani pasażerowie otrzymali odpowiednie powiadomienie.";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         // POST: RateDriver

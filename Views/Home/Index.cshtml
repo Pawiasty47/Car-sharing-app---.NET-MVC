@@ -3,6 +3,34 @@
     ViewData["Title"] = "Strona główna";
 }
 
+@if (Model.IsLoggedIn && Model.UnreadNotifications != null && Model.UnreadNotifications.Any())
+{
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                @foreach (var notif in Model.UnreadNotifications)
+                {
+                    <div class="alert alert-danger shadow border-danger border-2 mb-3" role="alert">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h4 class="alert-heading fw-bold"><i class="bi bi-exclamation-octagon-fill me-2"></i>@notif.Title</h4>
+                                <p class="mb-1 fs-5">@notif.Body</p>
+                                <small class="text-muted">Wysłano: @notif.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</small>
+                            </div>
+                            <form asp-controller="Home" asp-action="MarkNotificationAsRead" method="post">
+                                <input type="hidden" name="id" value="@notif.Id" />
+                                <button type="submit" class="btn btn-sm btn-danger fw-bold shadow-sm">
+                                    Zrozumiałem, ukryj
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 <!-- CTA -->
 <section class="text-center py-5">
     <h1 class="fw-bold text-success">Wóz albo Przewóz</h1>

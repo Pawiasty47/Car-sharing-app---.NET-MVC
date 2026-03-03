@@ -9,5 +9,7 @@
         public bool IsPassenger { get; set; }
         public bool IsAdmin { get; set; }
         public bool IsDriver { get; set; }
+
+        public List<Notification> UnreadNotifications { get; set; } = new List<Notification>();
     }
 }

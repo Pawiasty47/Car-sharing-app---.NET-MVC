@@ -41,6 +41,11 @@ public class HomeController : Controller
             vm.IsAdmin = roles.Contains("Admin");
             vm.IsDriver = await _db.DriverProfiles.AnyAsync(d => d.UserId == user.Id);
             vm.IsPassenger = roles.Contains("Passenger") && !vm.IsDriver;
+
+            vm.UnreadNotifications = await _db.Notifications
+                .Where(n => n.UserId == user.Id && !n.IsRead)
+                .OrderByDescending(n => n.CreatedAt)
+                .ToListAsync();
         }
 
         return View(vm);
@@ -60,5 +65,20 @@ public class HomeController : Controller
         {
             RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
         });
+    }
+
+    [HttpPost]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<IActionResult> MarkNotificationAsRead(Guid id)
+    {
+        var notification = await _db.Notifications.FindAsync(id);
+        var currentUserId = _userManager.GetUserId(User);
+
+        if (notification != null && notification.UserId.ToString() == currentUserId)
+        {
+            notification.IsRead = true;
+            await _db.SaveChangesAsync();
+        }
+        return RedirectToAction("Index");
     }
 }

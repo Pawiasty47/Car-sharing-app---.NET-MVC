@@ -21,124 +21,100 @@
         <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
     }
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    @if (Model.Status == RideStatus.Cancelled)
+    {
+        <div class="alert alert-danger shadow-sm border-danger border-2 text-center p-4 mb-4">
+            <i class="bi bi-x-octagon-fill fs-1 d-block mb-2"></i>
+            <h4 class="alert-heading fw-bold">Przejazd odwo³any!</h4>
+            <p class="mb-0">Ten przejazd zosta³ odwo³any przez kierowcê i nie doszed³ do skutku.</p>
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4 @(Model.Status == RideStatus.Cancelled ? "opacity-75" : "")">
+        <div class="card-header @(Model.Status == RideStatus.Cancelled ? "bg-danger" : "bg-primary") text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Podsumowanie przejazdu</h4>
             @if (Model.Status == RideStatus.Completed)
             {
                 <span class="badge bg-success">Zakoñczony</span>
             }
+            else if (Model.Status == RideStatus.Cancelled)
+            {
+                <span class="badge bg-dark">Odwo³any</span>
+            }
         </div>
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Trasa:</strong> @Model.StartLocation.City ? @Model.EndLocation.City</p>
-                    <p><strong>Data:</strong> @Model.DepartureTime.ToString("dd.MM.yyyy HH:mm")</p>
+            <div class="row mb-4 text-center">
+                <div class="col-5">
+                    <h4 class="fw-bold">@Model.StartLocation?.City</h4>
+                    <p class="text-muted mb-0">@Model.StartLocation?.Address</p>
                 </div>
-                <div class="col-md-6 text-end">
-                    <p><strong>Pojazd:</strong> @Model.Vehicle?.Make @Model.Vehicle?.Model</p>
+                <div class="col-2">
+                    <i class="bi bi-arrow-right fs-2"></i>
+                </div>
+                <div class="col-5">
+                    <h4 class="fw-bold">@Model.EndLocation?.City</h4>
+                    <p class="text-muted mb-0">@Model.EndLocation?.Address</p>
                 </div>
             </div>
+            <div class="text-center mb-4">
+                <span class="badge bg-light text-dark border">Wyjazd: @Model.DepartureTime.ToString("dd.MM.yyyy HH:mm")</span>
+            </div>
 
-            <hr />
-
-            <h5>Kierowca</h5>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <strong>@Model.Driver?.User?.FirstName @Model.Driver?.User?.LastName</strong>
-                    <div class="small text-muted">@Model.Driver?.User?.Email</div>
-                    <div class="small text-warning">
-                        <i class="bi bi-star-fill text-warning"></i>
-                        @Model.Driver?.Rating / 5.0
-                    </div>
-                </div>
-
-                <div class="text-end" style="min-width:300px;">
-                    @if (isPassenger && Model.Status == RideStatus.Completed)
+            @if (isPassenger && Model.Status == RideStatus.Completed)
+            {
+                <div class="alert alert-info border-info mb-4">
+                    <h5 class="alert-heading">Oceñ kierowcê</h5>
+                    @if (myReviews.ContainsKey(Model.DriverId))
                     {
-                        if (myReviews.ContainsKey(Model.DriverId))
-                        {
-                            <div class="text-success small">
-                                Oceni³eœ kierowcê:
-                                <i class="bi bi-star-fill text-warning"></i>
-                                <strong>@myReviews[Model.DriverId].Rating</strong>
-                                @if (!string.IsNullOrWhiteSpace(myReviews[Model.DriverId].Comment))
-                                {
-                                    <div class="fst-italic small text-muted">@myReviews[Model.DriverId].Comment</div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <form asp-action="RateDriver" method="post" class="text-end">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="rideId" value="@Model.Id" />
-                                <div class="d-flex gap-2 align-items-center">
-                                    <select name="rating" class="form-select form-select-sm" style="width:90px;">
-                                        <option value="5">5</option>
-                                        <option value="4">4</option>
-                                        <option value="3">3</option>
-                                        <option value="2">2</option>
-                                        <option value="1">1</option>
-                                    </select>
-                                    <input name="comment" class="form-control form-control-sm" placeholder="Opcjonalny komentarz" />
-                                    <button type="submit" class="btn btn-sm btn-primary">Oceñ kierowcê</button>
-                                </div>
-                            </form>
-                        }
-                    }
-                    else if (!isPassenger)
-                    {
-                        <small class="text-muted">Tylko zapisani pasa¿erowie mog¹ oceniæ kierowcê.</small>
+                        <div class="text-success fw-bold">
+                            Wystawi³eœ ju¿ ocenê kierowcy: @myReviews[Model.DriverId].Rating / 5
+                        </div>
                     }
                     else
                     {
-                        <small class="text-muted">Oceny dostêpne po zakoñczeniu przejazdu</small>
+                        <form asp-action="RateDriver" method="post" class="mt-3">
+                            <input type="hidden" name="rideId" value="@Model.Id" />
+                            <div class="d-flex gap-2 align-items-center">
+                                <label class="fw-bold mb-0">Twoja ocena:</label>
+                                <select name="rating" class="form-select form-select-sm" style="width: 100px;">
+                                    <option value="5">5 gwiazdek</option>
+                                    <option value="4">4 gwiazdki</option>
+                                    <option value="3">3 gwiazdki</option>
+                                    <option value="2">2 gwiazdki</option>
+                                    <option value="1">1 gwiazdka</option>
+                                </select>
+                                <input type="text" name="comment" class="form-control form-control-sm w-50" placeholder="Krótki komentarz (opcjonalnie)" />
+                                <button type="submit" class="btn btn-primary btn-sm">Zapisz opiniê</button>
+                            </div>
+                        </form>
                     }
                 </div>
-            </div>
-
-            <hr />
-
-            <h5>Pasa¿erowie (@bookings.Count)</h5>
-
-            @if (!bookings.Any())
-            {
-                <div class="text-muted">Brak zapisanych pasa¿erów.</div>
             }
-            else
-            {
-                <div class="list-group">
-                    @foreach (var b in bookings)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-start">
-                            <div>
-                                <strong>@b.Passenger?.FirstName @b.Passenger?.LastName</strong>
-                                <div class="small text-muted">@b.Passenger?.Email</div>
-                            </div>
 
-                            <div class="text-end" style="min-width:300px;">
-                                @if (isDriver && Model.Status == RideStatus.Completed)
+            @if (isDriver || User.IsInRole("Admin"))
+            {
+                <h5 class="fw-bold border-bottom pb-2">Pasa¿erowie (@bookings.Count(b => b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Completed))</h5>
+                <div class="list-group">
+                    @foreach (var b in bookings.Where(b => b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Completed))
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold">@b.Passenger?.FirstName @b.Passenger?.LastName</span>
+                                <span class="badge bg-secondary ms-2">@b.SeatsRequested msc.</span>
+                            </div>
+                            <div>
+                                @if (Model.Status == RideStatus.Completed)
                                 {
-                                    if (myReviews.ContainsKey(b.PassengerUserId))
+                                    @if (myReviews.ContainsKey(b.PassengerUserId))
                                     {
-                                        <div class="text-success small">
-                                            Oceni³eœ:
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <strong>@myReviews[b.PassengerUserId].Rating</strong>
-                                            @if (!string.IsNullOrWhiteSpace(myReviews[b.PassengerUserId].Comment))
-                                            {
-                                                <div class="fst-italic small text-muted">@myReviews[b.PassengerUserId].Comment</div>
-                                            }
-                                        </div>
+                                        <span class="text-success"><i class="bi bi-star-fill"></i> Ocena wystawiona: @myReviews[b.PassengerUserId].Rating</span>
                                     }
                                     else
                                     {
-                                        <form asp-action="RatePassenger" method="post" class="text-end">
-                                            @Html.AntiForgeryToken()
+                                        <form asp-action="RatePassenger" method="post" class="m-0">
                                             <input type="hidden" name="rideId" value="@Model.Id" />
                                             <input type="hidden" name="passengerUserId" value="@b.PassengerUserId" />
-                                            <div class="d-flex gap-2 align-items-center">
+                                            <div class="input-group input-group-sm">
                                                 <select name="rating" class="form-select form-select-sm" style="width:90px;">
                                                     <option value="5">5</option>
                                                     <option value="4">4</option>
@@ -151,6 +127,10 @@
                                             </div>
                                         </form>
                                     }
+                                }
+                                else if (Model.Status == RideStatus.Cancelled)
+                                {
+                                    <small class="text-muted">Przejazd odwo³any (brak mo¿liwoœci oceniania)</small>
                                 }
                                 else
                                 {

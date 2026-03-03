@@ -7,7 +7,6 @@
     ViewData["Title"] = "Szczegóły przejazdu";
 
     var currentUser = await UserManager.GetUserAsync(User);
-    // Sprawdzamy, czy to kierowca LUB Admin
     var isDriver = currentUser != null && (Model.DriverId == currentUser.Id || User.IsInRole("Admin"));
 
     var bookings = ViewBag.Bookings as List<Booking> ?? new List<Booking>();
@@ -37,13 +36,27 @@
         </div>
     }
 
+    @if (Model.Status == RideStatus.Cancelled)
+    {
+        <div class="alert alert-danger shadow-sm border-danger border-2 text-center p-4 mb-4">
+            <i class="bi bi-x-octagon-fill fs-1 d-block mb-2"></i>
+            <h4 class="alert-heading fw-bold">Przejazd został odwołany!</h4>
+            <p class="mb-0">Kierowca awaryjnie odwołał tę trasę. Żadne nowe rezerwacje nie są możliwe.</p>
+        </div>
+    }
+
     <div class="row">
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0 mb-4">
+            <div class="card shadow-sm border-0 mb-4 @(Model.Status == RideStatus.Cancelled ? "opacity-75" : "")">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0"><i class="bi bi-info-circle me-2"></i>Szczegóły Przejazdu</h4>
-                    <span class="badge bg-white text-primary fs-6">
+                    <span class="badge bg-white text-primary fs-6 d-flex align-items-center gap-2">
                         @Model.PricePerSeat.ToString("C") / os.
+                        @* ZMIANA 3: Znaczek do negocjacji *@
+                        @if (Model.IsFlexiblePrice)
+                        {
+                            <span class="badge bg-warning text-dark fs-7" title="Cena do negocjacji"><i class="bi bi-tag-fill me-1"></i>Do negocjacji</span>
+                        }
                     </span>
                 </div>
                 <div class="card-body">
@@ -105,7 +118,7 @@
             </div>
 
             <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Wróć do listy
+                <i class="bi bi-arrow-left"></i> Wróć do wyszukiwarki
             </a>
         </div>
 
@@ -118,7 +131,7 @@
                 // 1. Sekcja: Prośby oczekujące (PENDING)
                 var pendingBookings = bookings.Where(b => b.Status == projekt_zespołowy.Models.BookingStatus.Pending).ToList();
 
-                if (pendingBookings.Any())
+                if (pendingBookings.Any() && Model.Status != RideStatus.Cancelled)
                 {
                     <div class="card border-warning shadow-sm mb-4">
                         <div class="card-header bg-warning text-dark">
@@ -133,7 +146,6 @@
                                         <br />
                                         <small class="text-muted">Chce rezerwować: <span class="fw-bold text-dark">@b.SeatsRequested msc.</span></small>
 
-                                        @* ZMIANA: Wyświetlamy wiadomość pasażera WYRAŹNIE *@
                                         @if (!string.IsNullOrEmpty(b.CommentByPassenger))
                                         {
                                             <div class="alert alert-light border p-2 mt-2 mb-1 small">
@@ -164,7 +176,7 @@
                                             <form asp-controller="Booking" asp-action="Reject" method="post">
                                                 <div class="modal-header bg-danger text-white">
                                                     <h5 class="modal-title">Odrzuć rezerwację</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body text-start">
                                                     <p>Czy na pewno odrzucić pasażera <strong>@b.Passenger?.FirstName</strong>?</p>
@@ -172,8 +184,7 @@
 
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold small">Powód (opcjonalny):</label>
-                                                        <textarea name="reason" class="form-control" rows="3"
-                                                      placeholder="np. Brak miejsca na duży bagaż..."></textarea>
+                                                        <textarea name="reason" class="form-control" rows="3" placeholder="np. Brak miejsca na duży bagaż..."></textarea>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -196,17 +207,26 @@
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Pasażerowie</h5>
                         <div>
-                            @if (Model.Status != RideStatus.Completed)
+                            @if (Model.Status == RideStatus.Published || Model.Status == RideStatus.InProgress)
                             {
                                 <form asp-action="Complete" method="post" class="d-inline ms-2">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-light" onclick="return confirm('Zakończyć przejazd?')" title="Zakończ przejazd">
+                                    <button type="submit" class="btn btn-sm btn-outline-light" onclick="return confirm('Zakończyć przejazd?')" title="Zakończ przejazd jako zrealizowany">
                                         <i class="bi bi-check2-circle"></i>
                                     </button>
                                 </form>
+
+                                @* ZMIANA 2: AWARYJNE ODWOŁANIE PRZEJAZDU DLA KIEROWCY *@
+                                <form asp-action="CancelRide" method="post" class="d-inline ms-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger border-white" onclick="return confirm('CZY NA PEWNO chcesz awaryjnie odwołać ten przejazd? Wszyscy pasażerowie stracą rezerwacje i otrzymają powiadomienie.')" title="Awaryjne odwołanie przejazdu">
+                                        <i class="bi bi-x-octagon-fill"></i> Odwołaj trasę
+                                    </button>
+                                </form>
                             }
-                            else
+                            else if (Model.Status == RideStatus.Completed)
                             {
                                 <a asp-action="Summary" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-light ms-2" title="Podsumowanie">
                                     <i class="bi bi-file-earmark-text"></i>
@@ -259,7 +279,15 @@
                     <div class="card-body text-center">
                         <h5 class="text-uppercase text-muted small fw-bold mb-3">Dostępność miejsc</h5>
 
-                        @if (myBooking != null)
+                        @if (Model.Status == RideStatus.Cancelled)
+                        {
+                            <div class="alert alert-secondary border-0 bg-light">
+                                <i class="bi bi-slash-circle fs-1 d-block mb-2 text-danger"></i>
+                                <h4 class="text-muted">Przejazd Odwołany</h4>
+                                <p class="mb-0 small">Kierowca odwołał ten przejazd.</p>
+                            </div>
+                        }
+                        else if (myBooking != null && myBooking.Status != projekt_zespołowy.Models.BookingStatus.Cancelled)
                         {
                             if (myBooking.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
                             {
@@ -267,7 +295,13 @@
                                     <i class="bi bi-ticket-perforated-fill fs-1 d-block mb-2"></i>
                                     <h4 class="alert-heading">Rezerwacja potwierdzona!</h4>
                                     <p class="mb-0">Twoje miejsce jest zarezerwowane.</p>
-                                    <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-success mt-2">Zobacz bilet</a>
+                                    <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-success mt-2 mb-2 w-100">Zobacz bilet w swoich rezerwacjach</a>
+
+                                    @* ZMIANA 1: Pasażer może anulować ZATWIERDZONĄ rezerwację *@
+                                    <form asp-controller="Booking" asp-action="Cancel" method="post" onsubmit="return confirm('Czy na pewno chcesz anulować swoją rezerwację? To zwolni miejsce dla innych.');">
+                                        <input type="hidden" name="id" value="@myBooking.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">Rezygnuję z przejazdu</button>
+                                    </form>
                                 </div>
                             }
                             else if (myBooking.Status == projekt_zespołowy.Models.BookingStatus.Pending)
@@ -275,7 +309,13 @@
                                 <div class="alert alert-warning border-warning text-dark">
                                     <i class="bi bi-hourglass-split fs-1 d-block mb-2"></i>
                                     <h4 class="alert-heading">Oczekiwanie</h4>
-                                    <p class="mb-0">Wysłano prośbę do kierowcy. Czekaj na akceptację.</p>
+                                    <p class="mb-2">Wysłano prośbę do kierowcy. Czekaj na akceptację.</p>
+
+                                    @* ZMIANA 1: Pasażer może anulować OCZEKUJĄCĄ rezerwację *@
+                                    <form asp-controller="Booking" asp-action="Cancel" method="post" onsubmit="return confirm('Na pewno wycofać prośbę?');">
+                                        <input type="hidden" name="id" value="@myBooking.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-dark w-100">Wycofaj prośbę</button>
+                                    </form>
                                 </div>
                             }
                             else if (myBooking.Status == projekt_zespołowy.Models.BookingStatus.Rejected)
@@ -284,8 +324,6 @@
                                     <i class="bi bi-x-circle fs-1 d-block mb-2"></i>
                                     <h4 class="alert-heading">Odrzucono</h4>
                                     <p class="mb-2">Kierowca odrzucił Twoją prośbę.</p>
-
-                                    @* ZMIANA: Wyświetlanie powodu odrzucenia dla pasażera *@
                                     @if (!string.IsNullOrEmpty(myBooking.CommentByDriver))
                                     {
                                         <div class="bg-white p-2 rounded text-start small border border-danger border-opacity-25">

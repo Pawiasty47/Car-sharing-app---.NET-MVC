@@ -22,10 +22,21 @@ namespace projekt_zespołowy.Controllers
         }
 
         // GET: /Admin/Users
-        public async Task<IActionResult> Users()
+        public async Task<IActionResult> Users(string? search)
         {
             // 1. Pobieramy wszystkich użytkowników
-            var users = await _db.Users.ToListAsync();
+            var usersQuery = _db.Users.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                search = search.ToLower();
+
+                usersQuery = usersQuery.Where(u =>
+                    (u.FirstName + " " + u.LastName).ToLower().Contains(search) ||
+                    u.Email.ToLower().Contains(search));
+            }
+
+            var users = await usersQuery.ToListAsync();
 
             // 2. Pobieramy ID użytkowników, którzy mają profil w DriverProfiles
             var profileUserIds = await _db.DriverProfiles

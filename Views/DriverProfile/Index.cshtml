@@ -74,7 +74,7 @@
             <h4 class="mb-4 text-secondary">🛣️ Moje przejazdy</h4>
 
             <div class="row text-center mb-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card shadow-sm border-0">
                         <div class="card-body">
                             <h1 class="fw-bold text-success">
@@ -85,7 +85,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card shadow-sm border-0">
                         <div class="card-body">
                             <h1 class="fw-bold text-warning">
@@ -96,14 +96,24 @@
                     </div>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card shadow-sm border-0">
                         <div class="card-body">
-                            <!-- POPRAWIONE: KLEPSYDRA / CHECK NA PODSTAWIE WNIOSKU -->
                             <h1 class="fw-bold text-info">
                                 @(ViewBag.ApplicationStatus == projekt_zespołowy.Models.ApplicationStatus.Approved ? "✔" : "⏳")
                             </h1>
                             <p class="mb-0 text-muted">Status kierowcy</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <h1 class="fw-bold text-success">
+                                @ViewBag.TotalEarnings zł
+                            </h1>
+                            <p class="mb-0 text-muted">Łączne zarobki</p>
                         </div>
                     </div>
                 </div>
@@ -150,6 +160,10 @@
 
                             <div class="mt-2 text-muted">
                                 Pasażerów: @ride.Bookings.Count
+                            </div>
+                            <div class="mt-1 text-success fw-bold">
+                                Zarobek z kursu:
+                                @(ride.PricePerSeat * ride.Bookings.Count) zł
                             </div>
                         </div>
                     }

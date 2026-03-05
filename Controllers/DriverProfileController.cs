@@ -76,6 +76,9 @@ namespace projekt_zespołowy.Controllers
             profile.CompletedRidesCount = completedRides.Count;
             ViewBag.CompletedRides = completedRides;
 
+            ViewBag.TotalEarnings = completedRides
+                .Sum(r => r.PricePerSeat * r.Bookings.Count);
+
             return View(profile);
         }
 

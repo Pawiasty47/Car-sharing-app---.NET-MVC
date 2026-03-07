@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<Waypoint> Waypoints { get; set; }
     public DbSet<DriverApplication> DriverApplications { get; set; }
     public DbSet<AppReport> Reports { get; set; }
+    public DbSet<Opinion> Opinions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder model)
     {

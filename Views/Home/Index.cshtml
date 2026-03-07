@@ -31,20 +31,175 @@
     </div>
 }
 
-<!-- CTA -->
-<section class="text-center py-5">
-    <h1 class="fw-bold text-success">Wóz albo Przewóz</h1>
-    <p class="lead text-muted">
-        Wspólne przejazdy • niższe koszty • mniej spalin
-    </p>
+<div class="container mt-4 mb-5">
+    <div class="row align-items-center bg-success text-white rounded-4 shadow-sm p-5">
+        <div class="col-md-7">
+            <h1 class="display-4 fw-bold mb-3">Wóz albo Przewóz</h1>
+            <p class="lead mb-4">
+                Wspólne przejazdy • niższe koszty • mniej spalin.<br />
+                Znajdź idealny przejazd lub zaoferuj wolne miejsca w swoim aucie!
+            </p>
+            <div class="d-flex gap-3">
+                <a asp-controller="Rides" asp-action="Index" class="btn btn-light btn-lg text-success fw-bold px-4 shadow-sm">
+                    <i class="bi bi-search me-2"></i> Szukaj przejazdu
+                </a>
+                <a asp-controller="Rides" asp-action="Create" class="btn btn-outline-light btn-lg px-4">
+                    <i class="bi bi-plus-circle me-2"></i> Dodaj trasę
+                </a>
+            </div>
+        </div>
+        <div class="col-md-5 text-center d-none d-md-block">
+            <i class="bi bi-car-front-fill opacity-75" style="font-size: 12rem;"></i>
+        </div>
+    </div>
+</div>
 
-    <a class="btn btn-success btn-lg me-2" asp-controller="Rides" asp-action="Index">
-        <i class="bi bi-search"></i> Szukaj przejazdu
-    </a>
-</section>
+<div class="container mb-5 py-4">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-success">Jak to działa?</h2>
+        <p class="text-muted">Trzy proste kroki do udanej podróży</p>
+    </div>
 
+    <div class="row g-4 text-center">
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 hover-effect">
+                <div class="card-body">
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="bi bi-geo-alt-fill text-success" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">1. Znajdź przejazd</h4>
+                    <p class="text-muted mb-0">Wpisz skąd i dokąd chcesz jechać, a nasz system pokaże Ci listę dostępnych tras.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 hover-effect">
+                <div class="card-body">
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="bi bi-ticket-perforated-fill text-success" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">2. Zarezerwuj miejsce</h4>
+                    <p class="text-muted mb-0">Sprawdź profil kierowcy i jednym kliknięciem zarezerwuj swoje miejsce w aucie.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 hover-effect">
+                <div class="card-body">
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="bi bi-emoji-smile-fill text-success" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">3. Podróżuj taniej</h4>
+                    <p class="text-muted mb-0">Oszczędzaj na paliwie i poznawaj ciekawych ludzi po drodze!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-<!-- STATYSTYKI -->
+<div class="bg-light py-5 mb-5 rounded-4 shadow-sm container">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-secondary">Opinie naszych użytkowników</h2>
+        <p class="text-muted">Zobacz, co mówią o nas inni</p>
+
+        @if (Model.IsLoggedIn)
+        {
+            <button type="button" class="btn btn-outline-success mt-2" data-bs-toggle="modal" data-bs-target="#addOpinionModal">
+                <i class="bi bi-pencil-square me-2"></i> Dodaj własną opinię
+            </button>
+        }
+    </div>
+
+    <div class="row g-4 px-3">
+        @if (Model.RecentOpinions != null && Model.RecentOpinions.Any())
+        {
+            @foreach (var opinion in Model.RecentOpinions)
+            {
+                <div class="col-md-4">
+                    <div class="bg-white p-4 rounded-4 shadow-sm h-100 border-start border-success border-4 d-flex flex-column">
+                        <div class="d-flex text-warning mb-2">
+                            @for (int i = 0; i < opinion.Rating; i++)
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            @for (int i = opinion.Rating; i < 5; i++)
+                            {
+                                <i class="bi bi-star"></i>
+                            }
+                        </div>
+                        <p class="fst-italic text-muted mb-4 flex-grow-1">"@opinion.Content"</p>
+                        <div class="d-flex align-items-center mt-auto">
+                            <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center fw-bold me-3" style="width: 40px; height: 40px;">
+                                @(opinion.User.FirstName?.Substring(0, 1) ?? opinion.User.UserName?.Substring(0, 1).ToUpper())
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark">@(opinion.User.FirstName ?? "Użytkownik")</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-md-4">
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100 border-start border-success border-4 d-flex flex-column">
+                    <div class="d-flex text-warning mb-2">
+                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="fst-italic text-muted mb-4 flex-grow-1">"Świetni kierowcy i super atmosfera. Dzięki aplikacji oszczędzam mnóstwo czasu i pieniędzy na dojazdach."</p>
+                    <div class="d-flex align-items-center mt-auto">
+                        <div class="bg-secondary rounded-circle text-white d-flex align-items-center justify-content-center fw-bold me-3" style="width: 40px; height: 40px;">T</div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">Tomek</h6>
+                            <small class="text-muted">Pasażer</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100 border-start border-success border-4 d-flex flex-column">
+                    <div class="d-flex text-warning mb-2">
+                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="fst-italic text-muted mb-4 flex-grow-1">"Codziennie dojeżdżam do pracy. Wóz albo Przewóz to najlepsza alternatywa dla pociągów!"</p>
+                    <div class="d-flex align-items-center mt-auto">
+                        <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center fw-bold me-3" style="width: 40px; height: 40px;">A</div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">Anna</h6>
+                            <small class="text-muted">Kierowca</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100 border-start border-success border-4 d-flex flex-column">
+                    <div class="d-flex text-warning mb-2">
+                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-half"></i>
+                    </div>
+                    <p class="fst-italic text-muted mb-4 flex-grow-1">"Bardzo intuicyjny interfejs i bezpieczne przejazdy. Podoba mi się, że widzę opinie przed podróżą."</p>
+                    <div class="d-flex align-items-center mt-auto">
+                        <div class="bg-primary rounded-circle text-white d-flex align-items-center justify-content-center fw-bold me-3" style="width: 40px; height: 40px;">M</div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">Michał</h6>
+                            <small class="text-muted">Pasażer</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (Model.TotalOpinions > 3)
+    {
+        <div class="text-center mt-5">
+            <a asp-controller="Home" asp-action="AllOpinions" class="btn btn-link text-success text-decoration-none fw-bold fs-5">
+                Zobacz wszystkie opinie <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    }
+</div>
+
 <section class="container my-5">
     <div class="row text-center">
         <div class="col-md-6 mb-3">
@@ -58,8 +213,6 @@
     </div>
 </section>
 
-
-<!-- INFO WG ROLI -->
 @if (Model.IsAdmin)
 {
     <div class="alert alert-warning text-center container">
@@ -83,7 +236,6 @@
     </div>
 }
 
-<!-- SPONSORZY -->
 <section class="container my-3">
     <h3 class="text-center mb-2">Nasi partnerzy</h3>
 
@@ -106,13 +258,10 @@
     </div>
 </section>
 
-<!-- FAQ -->
 <section class="container my-5">
     <h3 class="text-center mb-4 text-success fw-bold">FAQ</h3>
 
     <div class="accordion shadow-sm" id="faqAccordion">
-
-        <!-- Pytanie 1 -->
         <div class="accordion-item border-0 border-bottom">
             <h2 class="accordion-header">
                 <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
@@ -126,7 +275,6 @@
             </div>
         </div>
 
-        <!-- Pytanie 2 -->
         <div class="accordion-item border-0 border-bottom">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
@@ -140,7 +288,6 @@
             </div>
         </div>
 
-        <!-- Pytanie 3 -->
         <div class="accordion-item border-0">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
@@ -153,13 +300,54 @@
                 </div>
             </div>
         </div>
-
     </div>
 </section>
 
-<!-- STYLE -->
+<div class="modal fade" id="addOpinionModal" tabindex="-1" aria-labelledby="addOpinionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold" id="addOpinionModalLabel">Dodaj opinię</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Home" asp-action="AddOpinion" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Twoja ocena (1-5 gwiazdek)</label>
+                        <select name="rating" class="form-select text-warning fw-bold">
+                            <option value="5">⭐⭐⭐⭐⭐ (Super!)</option>
+                            <option value="4">⭐⭐⭐⭐ (Bardzo dobrze)</option>
+                            <option value="3">⭐⭐⭐ (Średnio)</option>
+                            <option value="2">⭐⭐ (Słabo)</option>
+                            <option value="1">⭐ (Tragedia)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Napisz kilka słów</label>
+                        <textarea name="content" class="form-control" rows="4" placeholder="Opisz swoje wrażenia..." required maxlength="500"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                    <button type="submit" class="btn btn-success fw-bold">Zapisz opinię</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
-    /* Sponsorzy */
+    /* Nowe efekty */
+    .hover-effect {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .hover-effect:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+        }
+
+    /* Sponsorzy (Stare) */
     #sponsorsCarousel .carousel-inner img {
         width: 400px;
         height: 300px;
@@ -167,7 +355,7 @@
         margin: 0 auto;
     }
 
-    /* FAQ  */
+    /* FAQ (Stare) */
     .accordion-button:not(.collapsed) {
         background-color: #e9f7ef;
         color: #198754;

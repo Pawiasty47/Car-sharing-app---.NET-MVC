@@ -48,6 +48,15 @@ public class HomeController : Controller
                 .ToListAsync();
         }
 
+        // POBIERANIE OPINII DO WYŚWIETLENIA
+        vm.RecentOpinions = await _db.Opinions
+            .Include(o => o.User)
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(3)
+            .ToListAsync();
+
+        vm.TotalOpinions = await _db.Opinions.CountAsync();
+
         return View(vm);
     }
 
@@ -80,5 +89,53 @@ public class HomeController : Controller
             await _db.SaveChangesAsync();
         }
         return RedirectToAction("Index");
+    }
+
+    // METODA DO ZAPISYWANIA NOWEJ OPINII
+    [HttpPost]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<IActionResult> AddOpinion(string content, int rating)
+    {
+        if (!User.Identity.IsAuthenticated)
+        {
+            return Unauthorized();
+        }
+
+        // Walidacja czy użytkownik nie wysłał pustej opinii lub błędnej oceny
+        if (string.IsNullOrWhiteSpace(content) || rating < 1 || rating > 5)
+        {
+            TempData["Error"] = "Opinia musi zawierać treść i ocenę od 1 do 5.";
+            return RedirectToAction("Index");
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user != null)
+        {
+            var opinion = new Opinion
+            {
+                UserId = user.Id,
+                Content = content,
+                Rating = rating,
+                CreatedAt = DateTime.Now
+            };
+
+            _db.Opinions.Add(opinion);
+            await _db.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Dziękujemy za dodanie opinii!";
+        }
+
+        return RedirectToAction("Index");
+    }
+    // WIDOK WSZYSTKICH OPINII
+    public async Task<IActionResult> AllOpinions()
+    {
+        // Pobieramy wszystkie opinie z bazy, posortowane od najnowszej
+        var opinions = await _db.Opinions
+            .Include(o => o.User)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+
+        return View(opinions);
     }
 }

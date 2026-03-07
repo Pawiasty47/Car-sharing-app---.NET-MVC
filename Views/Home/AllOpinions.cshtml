@@ -1,0 +1,73 @@
+﻿@model IEnumerable<projekt_zespołowy.Models.Opinion>
+
+@{
+    ViewData["Title"] = "Wszystkie opinie";
+}
+
+<div class="container mt-5 mb-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-5 pb-3 border-bottom">
+        <div>
+            <h1 class="fw-bold text-success mb-1">Opinie naszych użytkowników</h1>
+            <p class="text-muted mb-0">Zobacz wszystkie @Model.Count() opinii</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary px-4 shadow-sm">
+            <i class="bi bi-arrow-left me-2"></i> Powrót
+        </a>
+    </div>
+
+    <div class="row g-4">
+        @if (Model.Any())
+        {
+            @foreach (var opinion in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="bg-white p-4 rounded-4 shadow-sm h-100 border-start border-success border-4 d-flex flex-column hover-effect">
+
+                        <div class="d-flex text-warning mb-3">
+                            @for (int i = 0; i < opinion.Rating; i++)
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            @for (int i = opinion.Rating; i < 5; i++)
+                            {
+                                <i class="bi bi-star"></i>
+                            }
+                        </div>
+
+                        <p class="fst-italic text-muted mb-4 flex-grow-1">"@opinion.Content"</p>
+
+                        <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top border-light">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center fw-bold me-3 shadow-sm" style="width: 40px; height: 40px;">
+                                    @(opinion.User.FirstName?.Substring(0, 1) ?? opinion.User.UserName?.Substring(0, 1).ToUpper())
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">@(opinion.User.FirstName ?? "Użytkownik")</h6>
+                                </div>
+                            </div>
+                            <small class="text-muted"><i class="bi bi-clock me-1"></i> @opinion.CreatedAt.ToString("dd.MM.yyyy")</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12 text-center py-5">
+                <h4 class="text-muted">Jeszcze nikt nie dodał opinii.</h4>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .hover-effect {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .hover-effect:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+        }
+</style>

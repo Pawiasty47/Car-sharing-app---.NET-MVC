@@ -11,5 +11,7 @@
         public bool IsDriver { get; set; }
 
         public List<Notification> UnreadNotifications { get; set; } = new List<Notification>();
+        public List<projekt_zespołowy.Models.Opinion>? RecentOpinions { get; set; }
+        public int TotalOpinions { get; set; }
     }
 }

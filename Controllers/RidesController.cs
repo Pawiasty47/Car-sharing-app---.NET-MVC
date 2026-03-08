@@ -20,7 +20,7 @@ namespace projekt_zespołowy.Controllers
         }
 
         // Lista przejazdów (wyszukiwanie)
-        public async Task<IActionResult> Index(string searchFrom, string searchTo, DateTime? searchDate)
+        public async Task<IActionResult> Index(string searchFrom, string searchTo, DateTime? searchDate, bool onlyMine = false)
         {
             var query = _context.OfferedRides
                 .Include(r => r.Vehicle)
@@ -48,6 +48,23 @@ namespace projekt_zespołowy.Controllers
                 (r.Status == RideStatus.Published || r.Status == RideStatus.InProgress)
                 && r.DepartureTime >= DateTime.Now);
 
+            // Jeśli użytkownik zaznaczył filtr "Tylko moje przejazdy" - przefiltruj po aktualnym kierowcy
+            if (onlyMine)
+            {
+                var uid = _userManager.GetUserId(User);
+                if (string.IsNullOrEmpty(uid))
+                {
+                    return Forbid();
+                }
+
+                query = query.Where(r => r.DriverId.ToString() == uid);
+                ViewBag.IsMyRidesMode = true;
+            }
+            else
+            {
+                ViewBag.IsMyRidesMode = false;
+            }
+
             var rides = await query
                 .OrderByDescending(r => r.DepartureTime)
                 .ToListAsync();
@@ -56,12 +73,25 @@ namespace projekt_zespołowy.Controllers
             ViewData["CurrentFilterTo"] = searchTo;
             ViewData["CurrentFilterDate"] = searchDate?.ToString("yyyy-MM-dd");
 
-            ViewBag.IsMyRidesMode = false;
+            // Pobierz przejazdy, na które aktualny użytkownik jest zapisany (żeby pokazać informację w widoku)
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                var bookedIds = await _context.Bookings
+                    .Where(b => b.PassengerUserId == currentUser.Id && b.Status != BookingStatus.Cancelled)
+                    .Select(b => b.RideId)
+                    .ToListAsync();
+                ViewBag.BookedRideIds = bookedIds;
+            }
+            else
+            {
+                ViewBag.BookedRideIds = new List<Guid>();
+            }
 
             return View(rides);
         }
 
-        public async Task<IActionResult> Archival(string searchFrom, string searchTo, DateTime? searchDate)
+        public async Task<IActionResult> Archival(string searchFrom, string searchTo, DateTime? searchDate, bool onlyMine = false)
         {
             var query = _context.OfferedRides
                 .Include(r => r.Vehicle)
@@ -90,6 +120,22 @@ namespace projekt_zespołowy.Controllers
                 || r.Status == RideStatus.Cancelled
                 || r.DepartureTime < DateTime.Now);
 
+            if (onlyMine)
+            {
+                var uid = _userManager.GetUserId(User);
+                if (string.IsNullOrEmpty(uid))
+                {
+                    return Forbid();
+                }
+
+                query = query.Where(r => r.DriverId.ToString() == uid);
+                ViewBag.IsMyRidesMode = true;
+            }
+            else
+            {
+                ViewBag.IsMyRidesMode = false;
+            }
+
             var rides = await query
                 .OrderByDescending(r => r.DepartureTime)
                 .ToListAsync();
@@ -105,20 +151,8 @@ namespace projekt_zespołowy.Controllers
         [Authorize]
         public async Task<IActionResult> MyRides()
         {
-            var userId = _userManager.GetUserId(User);
-
-            var myRides = await _context.OfferedRides
-                .Include(r => r.Vehicle)
-                .Include(r => r.Driver).ThenInclude(d => d.User)
-                .Include(r => r.StartLocation)
-                .Include(r => r.EndLocation)
-                .Where(r => r.DriverId.ToString() == userId)
-                .OrderByDescending(r => r.DepartureTime)
-                .ToListAsync();
-
-            ViewBag.IsMyRidesMode = true;
-
-            return View("Index", myRides);
+            // Przekierowujemy do Index z parametrem onlyMine, aby skorzystać z tego samego mechanizmu filtrowania
+            return RedirectToAction("Index", new { onlyMine = true });
         }
 
         // Moje ukończone przejazdy
@@ -320,6 +354,23 @@ namespace projekt_zespołowy.Controllers
 
             _context.OfferedRides.Add(ride);
             await _context.SaveChangesAsync();
+
+            // Usuń powiadomienie o zaakceptowaniu wniosku o zostanie kierowcą po dodaniu pierwszego przejazdu
+            try
+            {
+                var acceptNotifications = await _context.Notifications
+                    .Where(n => n.UserId == driverId && n.Title == "Wniosek zaakceptowany")
+                    .ToListAsync();
+                if (acceptNotifications.Any())
+                {
+                    _context.Notifications.RemoveRange(acceptNotifications);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch
+            {
+                // ignoruj błędy powiadomień
+            }
 
             TempData["SuccessMessage"] = "Pomyślnie dodano nowy przejazd!";
             return RedirectToAction(nameof(Index));

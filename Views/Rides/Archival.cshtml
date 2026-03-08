@@ -53,6 +53,14 @@
                     </div>
 
                     <div class="col-md-3">
+                        @if (User.Identity.IsAuthenticated && (User.IsInRole("Driver") || User.IsInRole("Admin")))
+                        {
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="onlyMine" name="onlyMine" value="true" @(ViewBag.IsMyRidesMode == true ? "checked" : "") />
+                                <label class="form-check-label small" for="onlyMine">Tylko moje przejazdy</label>
+                            </div>
+                        }
+
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-secondary">
                                 <i class="bi bi-search me-2"></i>Szukaj

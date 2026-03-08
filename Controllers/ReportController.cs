@@ -27,7 +27,21 @@ namespace projekt_zespołowy.Controllers
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            return View(reports);
+            // Pobierz oczekujące wnioski o status kierowcy, aby admin mógł je akceptować w jednym panelu
+            var driverApps = await _context.DriverApplications
+                .Include(d => d.User)
+                .Include(d => d.Vehicle)
+                .Where(d => d.Status == ApplicationStatus.Pending)
+                .OrderByDescending(d => d.ApplicationDate)
+                .ToListAsync();
+
+            var model = new projekt_zespołowy.Models.ViewModels.AdminReportsViewModel
+            {
+                Reports = reports,
+                DriverApplications = driverApps
+            };
+
+            return View(model);
         }
 
         // --- DLA UŻYTKOWNIKA: Formularz ---

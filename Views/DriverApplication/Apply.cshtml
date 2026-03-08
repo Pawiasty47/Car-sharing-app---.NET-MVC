@@ -74,6 +74,11 @@
         <div class="form-text">
             Na liście widoczne są tylko te pojazdy, które dodałaś wcześniej w zakładce "Moje Pojazdy".
         </div>
+        <div class="mt-2">
+            <a asp-controller="Vehicle" asp-action="Create" asp-route-returnUrl="@Url.Action("Index","DriverApplication")" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-plus-circle me-1"></i>Dodaj pojazd
+            </a>
+        </div>
     </div>
 
     <button type="submit" class="btn btn-primary">Wyślij wniosek</button>

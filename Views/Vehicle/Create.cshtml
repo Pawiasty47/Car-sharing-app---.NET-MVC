@@ -10,6 +10,10 @@
                 <h3 class="fw-bold text-success text-center mb-4">Dodaj pojazd</h3>
                 <!-- WAŻNE: enctype -->
                 <form asp-action="Create" method="post" enctype="multipart/form-data">
+                    @if (ViewBag.ReturnUrl != null)
+                    {
+                        <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+                    }
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                     @if (User.IsInRole("Admin"))

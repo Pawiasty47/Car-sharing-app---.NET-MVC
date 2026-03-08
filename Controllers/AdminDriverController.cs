@@ -51,6 +51,47 @@ namespace projekt_zespołowy.Controllers
 
             await _userManager.AddToRoleAsync(app.User, "Driver");
 
+            // Dodaj powiadomienie dla autora wniosku
+            try
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = app.UserId,
+                    Title = "Wniosek zaakceptowany",
+                    Body = "Twój wniosek o status kierowcy został zaakceptowany. Możesz teraz dodawać przejazdy.",
+                    CreatedAt = DateTime.UtcNow,
+                    IsRead = false
+                };
+                _context.Notifications.Add(notification);
+            }
+            catch
+            {
+                // ignoruj błędy powiadomień
+            }
+
+            // Utwórz profil kierowcy, jeśli jeszcze nie istnieje (po zatwierdzeniu wniosku)
+            try
+            {
+                var existingProfile = await _context.DriverProfiles.FindAsync(app.UserId);
+                if (existingProfile == null)
+                {
+                    var profile = new DriverProfile
+                    {
+                        UserId = app.UserId,
+                        User = app.User,
+                        IsVerified = true,
+                        CompletedRidesCount = 0,
+                        Rating = 0.0
+                    };
+                    _context.DriverProfiles.Add(profile);
+                }
+            }
+            catch
+            {
+                // ignoruj błędy tworzenia profilu, nie blokujemy akceptacji
+            }
+
             await _context.SaveChangesAsync();
             return RedirectToAction("Index");
         }
@@ -59,11 +100,30 @@ namespace projekt_zespołowy.Controllers
         [HttpPost]
         public async Task<IActionResult> Reject(int id, string reason)
         {
-            var app = await _context.DriverApplications.FindAsync(id);
+            var app = await _context.DriverApplications.Include(d => d.User).FirstOrDefaultAsync(d => d.Id == id);
             if (app == null) return NotFound();
 
             app.Status = ApplicationStatus.Rejected;
             app.AdminFeedback = string.IsNullOrEmpty(reason) ? "Brak podanego powodu" : reason;
+
+            // Powiadom autora wniosku o odrzuceniu
+            try
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = app.UserId,
+                    Title = "Wniosek odrzucony",
+                    Body = $"Twój wniosek o status kierowcy został odrzucony. Powód: {app.AdminFeedback}",
+                    CreatedAt = DateTime.UtcNow,
+                    IsRead = false
+                };
+                _context.Notifications.Add(notification);
+            }
+            catch
+            {
+                // ignoruj błędy powiadomień
+            }
 
             await _context.SaveChangesAsync();
             return RedirectToAction("Index");

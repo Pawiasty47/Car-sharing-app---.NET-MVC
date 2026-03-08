@@ -46,11 +46,15 @@ namespace projekt_zespołowy.Controllers
         }
 
         // --- CREATE ---
-        public IActionResult Create() => View();
+        public IActionResult Create(string? returnUrl)
+        {
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(AddVehicleViewModel vehicle)
+        public async Task<IActionResult> Create(AddVehicleViewModel vehicle, string? returnUrl)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
@@ -89,6 +93,10 @@ namespace projekt_zespołowy.Controllers
             _context.Vehicles.Add(v);
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "Pojazd dodany!";
+            if (!string.IsNullOrEmpty(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
             return RedirectToAction("Index");
         }
 

@@ -131,8 +131,37 @@ namespace projekt_zespołowy.Controllers
                 ApplicationDate = DateTime.Now
             };
 
+            // Ustawiamy nawigację do użytkownika oraz do pojazdu, żeby Admin mógł od razu zobaczyć dane
+            application.User = user;
+            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == model.SelectedVehicleId);
+            if (vehicle != null) application.Vehicle = vehicle;
+
             _context.DriverApplications.Add(application);
             await _context.SaveChangesAsync();
+
+            // Powiadom wszystkich administratorów o nowym wniosku
+            try
+            {
+                var admins = await _userManager.GetUsersInRoleAsync("Admin");
+                foreach (var admin in admins)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = admin.Id,
+                        Title = "Nowy wniosek o status kierowcy",
+                        Body = $"Użytkownik {user.Email} wysłał wniosek o zostanie kierowcą.",
+                        CreatedAt = DateTime.UtcNow,
+                        IsRead = false
+                    };
+                    _context.Notifications.Add(notification);
+                }
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // Nie przerywamy procesu w przypadku błędu wysyłania powiadomień
+            }
 
             TempData["Success"] = "Wniosek został wysłany!";
             return RedirectToAction("Index");

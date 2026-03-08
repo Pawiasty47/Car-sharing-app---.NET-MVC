@@ -1,4 +1,4 @@
-﻿@model IEnumerable<projekt_zespołowy.Models.AppReport>
+﻿@model projekt_zespołowy.Models.ViewModels.AdminReportsViewModel
 
 @{
     ViewData["Title"] = "Zgłoszenia";
@@ -24,7 +24,7 @@
         </div>
     }
 
-    @if (!Model.Any())
+    @if (!Model.Reports.Any() && !Model.DriverApplications.Any())
     {
         <div class="alert alert-success">
             <i class="bi bi-check-circle me-2"></i>Brak zgłoszeń!
@@ -32,6 +32,56 @@
     }
     else
     {
+        @* Sekcja: Wnioski o zostanie kierowcą *@
+        @if (Model.DriverApplications.Any())
+        {
+            <h4 class="mb-3">Wnioski o status kierowcy</h4>
+            <div class="table-responsive mb-4">
+                <table class="table table-hover shadow-sm border align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th>Użytkownik</th>
+                            <th>Dane</th>
+                            <th>Pojazd</th>
+                            <th class="text-end">Akcja</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var app in Model.DriverApplications)
+                        {
+                            <tr>
+                                <td>@app.ApplicationDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@app.User?.Email<br /><small>@app.FirstName @app.LastName</small></td>
+                                <td>
+                                    PESEL: @app.PESEL<br />
+                                    Prawo jazdy: @app.DriverLicenseNumber (@app.LicenseCategories)
+                                </td>
+                                <td>@app.Vehicle?.Make @app.Vehicle?.Model (@app.Vehicle?.RegistrationNumber)</td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <form asp-controller="AdminDriver" asp-action="Approve" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@app.Id" />
+                                            <button class="btn btn-success btn-sm">Akceptuj</button>
+                                        </form>
+
+                                        <button class="btn btn-danger btn-sm" onclick="rejectApp(@app.Id)">Odrzuć</button>
+
+                                        <form id="rejectForm-@app.Id" asp-controller="AdminDriver" asp-action="Reject" method="post" style="display:none;">
+                                            <input type="hidden" name="id" value="@app.Id" />
+                                            <input type="hidden" name="reason" id="reason-@app.Id" />
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @* Sekcja: Zgłoszenia błędów/raporty *@
+        <h4 class="mb-3">Zgłoszenia systemowe</h4>
         <div class="table-responsive">
             <table class="table table-hover shadow-sm border align-middle">
                 <thead class="table-light">
@@ -45,7 +95,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model)
+                    @foreach (var item in Model.Reports)
                     {
                         <tr class="@(item.IsResolved ? "table-light text-muted" : "")">
                             <td>@item.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
@@ -107,3 +157,13 @@
         </div>
     }
 </div>
+
+<script>
+    function rejectApp(id) {
+        let reason = prompt("Podaj powód odrzucenia:");
+        if (reason !== null) {
+            document.getElementById('reason-' + id).value = reason;
+            document.getElementById('rejectForm-' + id).submit();
+        }
+    }
+</script>

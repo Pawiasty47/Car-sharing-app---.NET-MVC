@@ -6,6 +6,7 @@ namespace projekt_zespołowy.Models.ViewModels
 {
     public class LocationInputModel
     {
+        public Guid Id { get; set; }
         [Required(ErrorMessage = "Pole 'Nazwa miejsca' jest wymagane.")]
         [Display(Name = "Nazwa/Opis miejsca")]
         public string Name { get; set; }

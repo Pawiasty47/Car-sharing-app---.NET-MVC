@@ -82,6 +82,98 @@
                             }
                         </div>
                     </div>
+
+@section Scripts {
+    <script>
+        (function(){
+            // Render coordinates if present, otherwise null so we can detect missing data
+            var startLat = @(Model.StartLocation != null && Model.StartLocation.Latitude != 0 ? Model.StartLocation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+            var startLng = @(Model.StartLocation != null && Model.StartLocation.Longtitude != 0 ? Model.StartLocation.Longtitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+            var endLat = @(Model.EndLocation != null && Model.EndLocation.Latitude != 0 ? Model.EndLocation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+            var endLng = @(Model.EndLocation != null && Model.EndLocation.Longtitude != 0 ? Model.EndLocation.Longtitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+
+            function fetchCoords(query){
+                return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(query), { headers: { 'Accept': 'application/json' } })
+                    .then(function(r){ if(!r.ok) throw new Error('geocode failed'); return r.json(); })
+                    .then(function(js){ if(js && js.length){ return { lat: parseFloat(js[0].lat), lon: parseFloat(js[0].lon) }; } return null; })
+                    .catch(function(){ return null; });
+            }
+
+            function buildQueryFromModel(prefix){
+                if(prefix === 'start'){
+                    var name = '@(Model.StartLocation?.Name ?? "")'.trim();
+                    var addr = '@(Model.StartLocation?.Address ?? "")'.trim();
+                    var city = '@(Model.StartLocation?.City ?? "")'.trim();
+                    return [name, addr, city].filter(Boolean).join(' ');
+                } else {
+                    var name2 = '@(Model.EndLocation?.Name ?? "")'.trim();
+                    var addr2 = '@(Model.EndLocation?.Address ?? "")'.trim();
+                    var city2 = '@(Model.EndLocation?.City ?? "")'.trim();
+                    return [name2, addr2, city2].filter(Boolean).join(' ');
+                }
+            }
+
+            function initMapWithCoords(sLat, sLng, eLat, eLng){
+                var map = L.map('rideDetailsMap').setView([ (sLat+eLat)/2, (sLng+eLng)/2 ], 8);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(map);
+
+                var startMarker = L.marker([sLat, sLng]).addTo(map).bindPopup('Start: ' + '@(Model.StartLocation?.Name ?? Model.StartLocation?.City ?? "Start")');
+                var endMarker = L.marker([eLat, eLng]).addTo(map).bindPopup('Cel: ' + '@(Model.EndLocation?.Name ?? Model.EndLocation?.City ?? "Cel")');
+
+                var bounds = L.latLngBounds([ [sLat, sLng], [eLat, eLng] ]);
+                map.fitBounds(bounds.pad(0.2));
+
+                L.polyline([[sLat, sLng], [eLat, eLng]], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
+            }
+
+            (function ensureAndInit(){
+                var sLat = (startLat !== null) ? Number(startLat) : null;
+                var sLng = (startLng !== null) ? Number(startLng) : null;
+                var eLat = (endLat !== null) ? Number(endLat) : null;
+                var eLng = (endLng !== null) ? Number(endLng) : null;
+
+                var promises = [];
+                if(sLat == null || sLng == null){
+                    var q = buildQueryFromModel('start');
+                    if(q) promises.push(fetchCoords(q).then(function(res){ if(res){ sLat = res.lat; sLng = res.lon; } }));
+                }
+                if(eLat == null || eLng == null){
+                    var q2 = buildQueryFromModel('end');
+                    if(q2) promises.push(fetchCoords(q2).then(function(res){ if(res){ eLat = res.lat; eLng = res.lon; } }));
+                }
+
+                Promise.all(promises).then(function(){
+                    if(sLat != null && sLng != null && eLat != null && eLng != null){
+                        initMapWithCoords(sLat, sLng, eLat, eLng);
+                    } else {
+                        // if we have only one point, center map on that
+                        if(sLat != null && sLng != null){
+                            var map = L.map('rideDetailsMap').setView([sLat, sLng], 12);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+                            L.marker([sLat, sLng]).addTo(map).bindPopup('Start').openPopup();
+                        } else if(eLat != null && eLng != null){
+                            var map = L.map('rideDetailsMap').setView([eLat, eLng], 12);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+                            L.marker([eLat, eLng]).addTo(map).bindPopup('Cel').openPopup();
+                        }
+                    }
+                }).catch(function(){ /* ignore */ });
+            })();
+        })();
+    </script>
+}
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-map me-2"></i>Trasa na mapie</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="rideDetailsMap" style="height: 320px; width: 100%;"></div>
+                </div>
+            </div>
                     <hr />
 
                     <div class="row g-3">

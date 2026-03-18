@@ -4,6 +4,67 @@
     ViewData["Title"] = "Dodaj nowy przejazd";
 }
 
+            // Geocode address typed by user (forward geocoding) and place marker
+            function geocodeAddress(prefix){
+                var nameEl = document.getElementById(prefix + '_Name');
+                var cityEl = document.getElementById(prefix + '_City');
+                var addrEl = document.getElementById(prefix + '_Address');
+                if(!nameEl && !cityEl && !addrEl) return;
+
+                var parts = [];
+                if(nameEl && nameEl.value.trim() !== '') parts.push(nameEl.value.trim());
+                if(addrEl && addrEl.value.trim() !== '') parts.push(addrEl.value.trim());
+                if(cityEl && cityEl.value.trim() !== '') parts.push(cityEl.value.trim());
+
+                var q = parts.join(' ');
+                if(!q) return;
+
+                var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q);
+                fetch(url, { headers: { 'Accept': 'application/json' } })
+                    .then(function(res){ if(!res.ok) throw new Error('geocode failed'); return res.json(); })
+                    .then(function(results){
+                        if(!results || !results.length) return;
+                        var r = results[0];
+                        var lat = parseFloat(r.lat);
+                        var lon = parseFloat(r.lon);
+                        if(isNaN(lat) || isNaN(lon)) return;
+
+                        // set marker via existing functions to reuse reverseGeocode/create logic
+                        if(prefix === 'StartLocation'){
+                            setPickup(L.latLng(lat, lon));
+                            map.setView([lat, lon], 12);
+                        } else {
+                            setDest(L.latLng(lat, lon));
+                            map.setView([lat, lon], 12);
+                        }
+                    })
+                    .catch(function(err){ console.warn('Forward geocode failed:', err); });
+            }
+
+            // simple debounce for input events
+            function debounce(fn, wait){
+                var t;
+                return function(){
+                    var args = arguments;
+                    clearTimeout(t);
+                    t = setTimeout(function(){ fn.apply(null, args); }, wait);
+                };
+            }
+
+            // Attach input listeners to address/name/city fields to trigger geocoding
+            function attachGeocodeListeners(prefix){
+                var nameEl = document.getElementById(prefix + '_Name');
+                var cityEl = document.getElementById(prefix + '_City');
+                var addrEl = document.getElementById(prefix + '_Address');
+                var handler = debounce(function(){ geocodeAddress(prefix); }, 700);
+                if(nameEl) nameEl.addEventListener('input', handler);
+                if(cityEl) cityEl.addEventListener('input', handler);
+                if(addrEl) addrEl.addEventListener('input', handler);
+            }
+
+            attachGeocodeListeners('StartLocation');
+            attachGeocodeListeners('EndLocation');
+
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
@@ -59,8 +120,9 @@
                                         <span asp-validation-for="StartLocation.Name" class="text-danger"></span>
                                     </div>
 
-                                    <input type="hidden" asp-for="StartLocation.Latitude" value="52,2297" />
-                                    <input type="hidden" asp-for="StartLocation.Longtitude" value="21,0122" />
+                                    <input type="hidden" id="StartLat" name="StartLocation.Latitude" value="@(Model?.StartLocation != null && Model.StartLocation.Latitude != 0 ? Model.StartLocation.Latitude.ToString("F6") : String.Empty)" />
+                                    <input type="hidden" id="StartLocation_Id" name="StartLocation.Id" value="@(Model?.StartLocation != null && Model.StartLocation.Id != Guid.Empty ? Model.StartLocation.Id.ToString() : String.Empty)" />
+                                    <input type="hidden" id="StartLng" name="StartLocation.Longtitude" value="@(Model?.StartLocation != null && Model.StartLocation.Longtitude != 0 ? Model.StartLocation.Longtitude.ToString("F6") : String.Empty)" />
                                 </div>
                             </div>
                         </div>
@@ -88,8 +150,25 @@
                                         <span asp-validation-for="EndLocation.Name" class="text-danger"></span>
                                     </div>
 
-                                    <input type="hidden" asp-for="EndLocation.Latitude" value="50,0647" />
-                                    <input type="hidden" asp-for="EndLocation.Longtitude" value="19,9450" />
+                                    <input type="hidden" id="EndLat" name="EndLocation.Latitude" value="@(Model?.EndLocation != null && Model.EndLocation.Latitude != 0 ? Model.EndLocation.Latitude.ToString("F6") : String.Empty)" />
+                                    <input type="hidden" id="EndLocation_Id" name="EndLocation.Id" value="@(Model?.EndLocation != null && Model.EndLocation.Id != Guid.Empty ? Model.EndLocation.Id.ToString() : String.Empty)" />
+                                    <input type="hidden" id="EndLng" name="EndLocation.Longtitude" value="@(Model?.EndLocation != null && Model.EndLocation.Longtitude != 0 ? Model.EndLocation.Longtitude.ToString("F6") : String.Empty)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="fw-bold">Wybierz punkty na mapie</h6>
+                            <p class="small text-muted">Kliknij na mapie, aby ustawić punkt startu, następnie kliknij ponownie aby ustawić punkt docelowy. Użyj przycisku "Resetuj" aby usunąć znaczniki.</p>
+                            <div id="rideMap" style="height: 400px; width: 100%;"></div>
+                            <div class="mt-2 d-flex gap-2">
+                                <button type="button" id="resetMapBtn" class="btn btn-outline-secondary btn-sm">Resetuj</button>
+                                <div class="ms-auto small">
+                                    <span class="fw-bold">Start:</span> <span id="startCoords">-</span>
+                                    &nbsp;•&nbsp;
+                                    <span class="fw-bold">Cel:</span> <span id="endCoords">-</span>
                                 </div>
                             </div>
                         </div>
@@ -155,4 +234,217 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        (function(){
+            // Map initialization
+            var startInputLat = document.getElementById('StartLat');
+            var startInputLng = document.getElementById('StartLng');
+            var endInputLat = document.getElementById('EndLat');
+            var endInputLng = document.getElementById('EndLng');
+
+            var startCoordsLabel = document.getElementById('startCoords');
+            var endCoordsLabel = document.getElementById('endCoords');
+
+            // Domyślnie ustaw centrum na Polskę; jeśli przeglądarka udostępni lokalizację, przybliż ją
+            var map = L.map('rideMap').setView([52.0, 19.0], 6);
+            if (navigator && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(pos){
+                    var lat = pos.coords.latitude;
+                    var lng = pos.coords.longitude;
+                    map.setView([lat, lng], 12);
+                }, function(){
+                    // ignore geolocation errors
+                }, { timeout: 5000 });
+            }
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+
+            var pickupMarker = null;
+            var destMarker = null;
+
+            function updateLabels(){
+                startCoordsLabel.textContent = (startInputLat.value && startInputLng.value) ? startInputLat.value + ', ' + startInputLng.value : '-';
+                endCoordsLabel.textContent = (endInputLat.value && endInputLng.value) ? endInputLat.value + ', ' + endInputLng.value : '-';
+            }
+
+            function setPickup(latlng){
+                if(pickupMarker) pickupMarker.setLatLng(latlng);
+                else pickupMarker = L.marker(latlng).addTo(map).bindPopup('Punkt startu');
+                startInputLat.value = latlng.lat.toFixed(6);
+                startInputLng.value = latlng.lng.toFixed(6);
+                // reverse-geocode to fill city/address/name inputs
+                reverseGeocode(latlng, 'StartLocation');
+                updateLabels();
+            }
+
+            function setDest(latlng){
+                if(destMarker) destMarker.setLatLng(latlng);
+                else destMarker = L.marker(latlng).addTo(map).bindPopup('Punkt docelowy');
+                endInputLat.value = latlng.lat.toFixed(6);
+                endInputLng.value = latlng.lng.toFixed(6);
+                reverseGeocode(latlng, 'EndLocation');
+                updateLabels();
+            }
+
+            function reverseGeocode(latlng, prefix){
+                // prefix examples: 'StartLocation' or 'EndLocation'
+                var url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + encodeURIComponent(latlng.lat) + '&lon=' + encodeURIComponent(latlng.lng);
+                var nameEl = document.getElementById(prefix + '_Name');
+                var cityEl = document.getElementById(prefix + '_City');
+                var addrEl = document.getElementById(prefix + '_Address');
+
+                fetch(url, { headers: { 'Accept': 'application/json' } })
+                    .then(function(response){
+                        if(!response.ok) throw new Error('geocode failed');
+                        return response.json();
+                    })
+                    .then(function(data){
+                        var address = data && data.address ? data.address : {};
+                        var city = address.city || address.town || address.village || address.county || '';
+                        var road = address.road || '';
+                        var house = address.house_number || '';
+                        var postcode = address.postcode || '';
+
+                        var addrParts = [];
+                        if(road) addrParts.push(road);
+                        if(house) addrParts.push(house);
+                        if(postcode) addrParts.push(postcode);
+                        var addressStr = addrParts.join(' ');
+
+                        // Fill only if elements exist and are empty
+                        if(nameEl && (!nameEl.value || nameEl.value.trim() === '')){
+                            if(data && data.name) nameEl.value = data.name;
+                            else if(address.amenity) nameEl.value = address.amenity;
+                            else if(road) nameEl.value = road;
+                            else nameEl.value = 'Punkt (' + latlng.lat.toFixed(4) + ', ' + latlng.lng.toFixed(4) + ')';
+                        }
+                        if(cityEl && (!cityEl.value || cityEl.value.trim() === '')){
+                            cityEl.value = city || 'Nieznane';
+                        }
+                        if(addrEl && (!addrEl.value || addrEl.value.trim() === '')){
+                            addrEl.value = addressStr || (data && data.display_name) || (latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6));
+                        }
+
+                        // Send to server to create LocationPoint and store returned id
+                        try {
+                            var payload = {
+                                Name: nameEl ? nameEl.value : '',
+                                City: cityEl ? cityEl.value : '',
+                                Address: addrEl ? addrEl.value : '',
+                                Latitude: latlng.lat,
+                                Longtitude: latlng.lng
+                            };
+                            fetch('/Rides/CreateLocationPoint', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            }).then(function(res){ return res.json(); })
+                              .then(function(json){
+                                  if(json && json.id){
+                                      var idEl = document.getElementById(prefix + '_Id');
+                                      if(idEl) idEl.value = json.id;
+                                  }
+                              }).catch(function(){ /* ignore */ });
+                        } catch(e) { /* ignore */ }
+                    })
+                    .catch(function(err){
+                        // fallback: put coordinates so validation passes
+                        if(nameEl && (!nameEl.value || nameEl.value.trim() === '')){
+                            nameEl.value = 'Punkt (' + latlng.lat.toFixed(4) + ', ' + latlng.lng.toFixed(4) + ')';
+                        }
+                        if(cityEl && (!cityEl.value || cityEl.value.trim() === '')){
+                            cityEl.value = 'Nieznane';
+                        }
+                        if(addrEl && (!addrEl.value || addrEl.value.trim() === '')){
+                            addrEl.value = latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6);
+                        }
+                        console.warn('Reverse geocode failed:', err);
+                    });
+            }
+
+            // preload from hidden inputs if present
+            if(startInputLat.value && startInputLng.value){
+                setPickup(L.latLng(parseFloat(startInputLat.value), parseFloat(startInputLng.value)));
+                map.setView([parseFloat(startInputLat.value), parseFloat(startInputLng.value)], 12);
+            }
+            if(endInputLat.value && endInputLng.value){
+                setDest(L.latLng(parseFloat(endInputLat.value), parseFloat(endInputLng.value)));
+            }
+
+            var clickCount = 0;
+            map.on('click', function(e){
+                if(!pickupMarker){
+                    setPickup(e.latlng);
+                } else if(!destMarker){
+                    setDest(e.latlng);
+                } else {
+                    // if both exist, replace dest on next click
+                    setDest(e.latlng);
+                }
+            });
+
+            document.getElementById('resetMapBtn').addEventListener('click', function(){
+                if(pickupMarker){ map.removeLayer(pickupMarker); pickupMarker = null; }
+                if(destMarker){ map.removeLayer(destMarker); destMarker = null; }
+                startInputLat.value = '';
+                startInputLng.value = '';
+                endInputLat.value = '';
+                endInputLng.value = '';
+                // Clear also visible form fields and stored location ids so subsequent clicks update them
+                var startName = document.getElementById('StartLocation_Name');
+                var startCity = document.getElementById('StartLocation_City');
+                var startAddr = document.getElementById('StartLocation_Address');
+                var startId = document.getElementById('StartLocation_Id');
+                if(startName) startName.value = '';
+                if(startCity) startCity.value = '';
+                if(startAddr) startAddr.value = '';
+                if(startId) startId.value = '';
+
+                var endName = document.getElementById('EndLocation_Name');
+                var endCity = document.getElementById('EndLocation_City');
+                var endAddr = document.getElementById('EndLocation_Address');
+                var endId = document.getElementById('EndLocation_Id');
+                if(endName) endName.value = '';
+                if(endCity) endCity.value = '';
+                if(endAddr) endAddr.value = '';
+                if(endId) endId.value = '';
+
+                updateLabels();
+            });
+
+            // Block submit if required location fields are empty
+            var form = document.querySelector('form[asp-action="Create"]') || document.querySelector('form');
+            function isLocationFilled(prefix){
+                var lat = document.getElementById(prefix + 'Lat');
+                var lng = document.getElementById(prefix + 'Lng');
+                var name = document.getElementById(prefix + '_Name');
+                var city = document.getElementById(prefix + '_City');
+                var addr = document.getElementById(prefix + '_Address');
+                if(!lat || !lng || !name || !city || !addr) return false;
+                return lat.value.trim() !== '' && lng.value.trim() !== '' && name.value.trim() !== '' && city.value.trim() !== '' && addr.value.trim() !== '';
+            }
+
+            if(form){
+                form.addEventListener('submit', function(e){
+                    // ensure both start and end are filled
+                    var startOk = isLocationFilled('StartLocation');
+                    var endOk = isLocationFilled('EndLocation');
+                    if(!startOk || !endOk){
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // show user-friendly message
+                        var msg = 'Proszę ustawić oba punkty na mapie i upewnić się, że pola Nazwa/Miasto/Adres są wypełnione.';
+                        alert(msg);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            updateLabels();
+        })();
+    </script>
 }

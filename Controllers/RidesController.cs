@@ -19,6 +19,37 @@ namespace projekt_zespołowy.Controllers
             _userManager = userManager;
         }
 
+        // DTO used for AJAX location creation
+        public class LocationPointDto
+        {
+            public string Name { get; set; }
+            public string City { get; set; }
+            public string Address { get; set; }
+            public double Latitude { get; set; }
+            public double Longtitude { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateLocationPoint([FromBody] LocationPointDto dto)
+        {
+            if (dto == null) return BadRequest();
+
+            var lp = new LocationPoint
+            {
+                Id = Guid.NewGuid(),
+                Name = dto.Name ?? string.Empty,
+                City = dto.City ?? string.Empty,
+                Address = dto.Address ?? string.Empty,
+                Latitude = dto.Latitude,
+                Longtitude = dto.Longtitude
+            };
+
+            _context.LocationPoints.Add(lp);
+            await _context.SaveChangesAsync();
+
+            return Json(new { id = lp.Id });
+        }
+
         // Lista przejazdów (wyszukiwanie)
         public async Task<IActionResult> Index(string searchFrom, string searchTo, DateTime? searchDate, bool onlyMine = false)
         {
@@ -316,32 +347,11 @@ namespace projekt_zespołowy.Controllers
                 return View(model);
             }
 
-            var startLoc = new LocationPoint
-            {
-                Id = Guid.NewGuid(),
-                Name = model.StartLocation.Name,
-                City = model.StartLocation.City,
-                Address = model.StartLocation.Address,
-                Latitude = 52.2297,
-                Longtitude = 21.0122
-            };
-            var endLoc = new LocationPoint
-            {
-                Id = Guid.NewGuid(),
-                Name = model.EndLocation.Name,
-                City = model.EndLocation.City,
-                Address = model.EndLocation.Address,
-                Latitude = 50.0647,
-                Longtitude = 19.9450
-            };
-
             var ride = new OfferedRide
             {
                 Id = Guid.NewGuid(),
                 VehicleId = model.SelectedVehicleId,
                 DriverId = driverId,
-                StartLocation = startLoc,
-                EndLocation = endLoc,
                 DepartureTime = model.DepartureTime,
                 ArrivalTime = model.ArrivalTime,
                 SeatsOffered = model.SeatsOffered,
@@ -351,6 +361,43 @@ namespace projekt_zespołowy.Controllers
                 Notes = model.Notes,
                 Status = RideStatus.Published
             };
+
+            // If StartLocation.Id provided (created via AJAX) link existing LocationPoint, otherwise create new
+            if (model.StartLocation != null && model.StartLocation.Id != Guid.Empty)
+            {
+                ride.StartLocationId = model.StartLocation.Id;
+            }
+            else
+            {
+                var startLoc = new LocationPoint
+                {
+                    Id = Guid.NewGuid(),
+                    Name = model.StartLocation.Name,
+                    City = model.StartLocation.City,
+                    Address = model.StartLocation.Address,
+                    Latitude = model.StartLocation.Latitude,
+                    Longtitude = model.StartLocation.Longtitude
+                };
+                ride.StartLocation = startLoc;
+            }
+
+            if (model.EndLocation != null && model.EndLocation.Id != Guid.Empty)
+            {
+                ride.EndLocationId = model.EndLocation.Id;
+            }
+            else
+            {
+                var endLoc = new LocationPoint
+                {
+                    Id = Guid.NewGuid(),
+                    Name = model.EndLocation.Name,
+                    City = model.EndLocation.City,
+                    Address = model.EndLocation.Address,
+                    Latitude = model.EndLocation.Latitude,
+                    Longtitude = model.EndLocation.Longtitude
+                };
+                ride.EndLocation = endLoc;
+            }
 
             _context.OfferedRides.Add(ride);
             await _context.SaveChangesAsync();

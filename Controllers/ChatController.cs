@@ -72,4 +72,27 @@ public class ChatController : Controller
 
         return RedirectToAction("RideChat", new { rideId = chat.RideId });
     }
+    public async Task<IActionResult> ChatList()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return NotFound("Nie jesteś zalogowany.");
+
+        // Pobieramy czaty, w których użytkownik jest kierowcą lub pasażerem
+        var chats = await _context.Chats
+            .Include(c => c.Ride)
+                .ThenInclude(r => r.StartLocation)
+            .Include(c => c.Ride)
+                .ThenInclude(r => r.EndLocation)
+            .Include(c => c.Ride)
+                .ThenInclude(r => r.Driver)
+                    .ThenInclude(d => d.User)
+            .Include(c => c.Messages)
+            .Where(c =>
+                c.Ride.Driver.UserId == user.Id ||
+                c.Ride.Bookings.Any(b => b.PassengerUserId == user.Id && b.Status != BookingStatus.Cancelled))
+            .OrderByDescending(c => c.Messages.Max(m => m.CreatedAt))
+            .ToListAsync();
+
+        return View(chats);
+    }
 }

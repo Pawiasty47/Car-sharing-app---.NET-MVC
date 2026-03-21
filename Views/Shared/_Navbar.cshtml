@@ -49,6 +49,9 @@
                 @if (User.Identity?.IsAuthenticated ?? false)
                 {
                     <li class="nav-item">
+                        <a class="nav-link" asp-controller="Chat" asp-action="ChatList">Lista Chatów</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" asp-controller="PassengerProfile" asp-action="Index">Mój Profil</a>
                     </li>
                     <li class="nav-item ms-2">

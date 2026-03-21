@@ -25,6 +25,10 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<AppReport> Reports { get; set; }
     public DbSet<Opinion> Opinions { get; set; }
 
+    public DbSet<Chat> Chats { get; set; }
+    public DbSet<ChatMessage> ChatMessages { get; set; }
+    public DbSet<ChatParticipant> ChatParticipants { get; set; }
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         base.OnModelCreating(model);

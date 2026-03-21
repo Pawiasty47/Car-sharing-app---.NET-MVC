@@ -25,6 +25,8 @@ namespace projekt_zespołowy.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound("Błąd: Nie jesteś zalogowana.");
 
+
+
             var profile = await _context.PassengerProfiles
                 .FirstOrDefaultAsync(p => p.UserId == user.Id);
 

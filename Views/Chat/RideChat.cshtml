@@ -1,0 +1,25 @@
+﻿@model Chat
+
+<div class="container">
+    <h3>Czat przejazdu</h3>
+
+    <div style="height:400px; overflow-y:scroll; border:1px solid #ccc; padding:10px;">
+        @foreach (var msg in Model.Messages.OrderBy(m => m.CreatedAt))
+        {
+            <div>
+                <strong>@msg.Sender.FirstName:</strong>
+                @msg.Content
+                <small class="text-muted">@msg.CreatedAt</small>
+            </div>
+        }
+    </div>
+
+    <form asp-action="SendMessage" method="post">
+        <input type="hidden" name="chatId" value="@Model.Id" />
+
+        <div class="input-group mt-2">
+            <input name="content" class="form-control" />
+            <button class="btn btn-success">Wyślij</button>
+        </div>
+    </form>
+</div>

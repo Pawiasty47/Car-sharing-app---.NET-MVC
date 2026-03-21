@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 
+
 namespace projekt_zespołowy.Controllers
 {
     [Authorize]
@@ -93,6 +94,7 @@ namespace projekt_zespołowy.Controllers
         // 3. AKCEPTACJA PASAŻERA (Dla Kierowcy i Admina)
         [HttpPost]
         [ValidateAntiForgeryToken]
+
         public async Task<IActionResult> Accept(Guid bookingId)
         {
             var booking = await _context.Bookings
@@ -108,10 +110,44 @@ namespace projekt_zespołowy.Controllers
                 return Forbid();
             }
 
-            // ZMIANA: Usunięto sprawdzanie dostępności miejsc i powiększanie SeatsTaken.
-            // Zrobiliśmy to już w metodzie Create!
-
             booking.Status = BookingStatus.Confirmed;
+
+            // ✅ TWORZENIE / POBIERANIE CHATA
+            var chat = await _context.Chats
+                .FirstOrDefaultAsync(c => c.RideId == booking.RideId);
+
+            if (chat == null)
+            {
+                chat = new Chat
+                {
+                    Id = Guid.NewGuid(),
+                    RideId = booking.RideId
+                };
+
+                _context.Chats.Add(chat);
+
+                // kierowca
+                _context.ChatParticipants.Add(new ChatParticipant
+                {
+                    Id = Guid.NewGuid(),
+                    ChatId = chat.Id,
+                    UserId = booking.Ride.DriverId
+                });
+            }
+
+            // pasażer
+            bool alreadyParticipant = await _context.ChatParticipants
+                .AnyAsync(p => p.ChatId == chat.Id && p.UserId == booking.PassengerUserId);
+
+            if (!alreadyParticipant)
+            {
+                _context.ChatParticipants.Add(new ChatParticipant
+                {
+                    Id = Guid.NewGuid(),
+                    ChatId = chat.Id,
+                    UserId = booking.PassengerUserId
+                });
+            }
 
             await _context.SaveChangesAsync();
 

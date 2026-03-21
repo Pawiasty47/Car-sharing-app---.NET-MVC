@@ -1,0 +1,31 @@
+﻿@model IEnumerable<projekt_zespołowy.Models.Notification>
+
+<h2>Moje powiadomienia</h2>
+
+<div class="mb-3">
+    <a class="btn btn-outline-primary" asp-controller="RideSubscription" asp-action="Index">
+        <i class="bi bi-bell-fill me-2"></i>Zarządzaj subskrypcjami przejazdów
+    </a>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Tytuł</th>
+            <th>Treść</th>
+            <th>Data</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var n in Model)
+        {
+            <tr class="@(n.IsRead ? "" : "fw-bold")">
+                <td>@n.Title</td>
+                <td>@n.Body</td>
+                <td>@n.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@(n.IsRead ? "Przeczytane" : "Nieprzeczytane")</td>
+            </tr>
+        }
+    </tbody>
+</table>

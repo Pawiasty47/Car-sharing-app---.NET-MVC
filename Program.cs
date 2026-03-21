@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespo³owy;
 using projekt_zespo³owy.Models;
+using projekt_zespo³owy.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +26,7 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-
+builder.Services.AddScoped<RideNotificationService>();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())

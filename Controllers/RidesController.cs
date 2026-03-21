@@ -291,23 +291,19 @@ namespace projekt_zespołowy.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(AddRideViewModel model)
         {
+            // Usuń pola, które nie są walidowane w ModelState
             ModelState.Remove("AvailableVehicles");
             ModelState.Remove("StartLocation.Latitude");
             ModelState.Remove("StartLocation.Longtitude");
             ModelState.Remove("EndLocation.Latitude");
             ModelState.Remove("EndLocation.Longtitude");
 
-            // --- DODANA WALIDACJA DAT ---
+            // Walidacja dat
             if (model.DepartureTime < DateTime.Now)
-            {
                 ModelState.AddModelError("DepartureTime", "Data wyjazdu nie może być w przeszłości.");
-            }
 
             if (model.ArrivalTime.HasValue && model.ArrivalTime.Value <= model.DepartureTime)
-            {
                 ModelState.AddModelError("ArrivalTime", "Data przyjazdu musi być późniejsza niż data wyjazdu.");
-            }
-            // ----------------------------
 
             if (!ModelState.IsValid)
             {
@@ -320,33 +316,66 @@ namespace projekt_zespołowy.Controllers
                 return View(model);
             }
 
-            // Tutaj .Include(v => v.Owner) jest OK, bo nie ma ThenInclude
-            var vehicle = await _context.Vehicles.Include(v => v.Owner).FirstOrDefaultAsync(v => v.Id == model.SelectedVehicleId);
+            // Pobierz pojazd
+            var vehicle = await _context.Vehicles.Include(v => v.Owner)
+                .FirstOrDefaultAsync(v => v.Id == model.SelectedVehicleId);
             if (vehicle == null) return NotFound();
 
             var currentUserId = Guid.Parse(_userManager.GetUserId(User));
             var isAdmin = User.IsInRole("Admin");
 
             if (!isAdmin && vehicle.OwnerId != currentUserId)
-            {
                 return Forbid();
-            }
 
-            Guid driverId = vehicle.OwnerId;
+            var driverId = vehicle.OwnerId;
 
+            // Sprawdź profil kierowcy
             var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == driverId);
             if (driverProfile == null)
             {
                 ModelState.AddModelError("", "Właściciel wybranego pojazdu nie posiada aktywnego profilu kierowcy.");
-
                 var uid = _userManager.GetUserId(User);
-                if (isAdmin)
-                    model.AvailableVehicles = await _context.Vehicles.Include(v => v.Owner).ToListAsync();
-                else
-                    model.AvailableVehicles = await _context.Vehicles.Where(v => v.OwnerId.ToString() == uid).ToListAsync();
+                model.AvailableVehicles = isAdmin
+                    ? await _context.Vehicles.Include(v => v.Owner).ToListAsync()
+                    : await _context.Vehicles.Where(v => v.OwnerId.ToString() == uid).ToListAsync();
                 return View(model);
             }
 
+            // Przygotuj lokalizacje
+            if (model.StartLocation == null || model.EndLocation == null)
+                return BadRequest();
+
+            if (model.StartLocation.Id == Guid.Empty)
+            {
+                model.StartLocation.Id = Guid.NewGuid();
+                var startLoc = new LocationPoint
+                {
+                    Id = model.StartLocation.Id,
+                    Name = model.StartLocation.Name,
+                    City = model.StartLocation.City,
+                    Address = model.StartLocation.Address,
+                    Latitude = model.StartLocation.Latitude,
+                    Longtitude = model.StartLocation.Longtitude
+                };
+                _context.LocationPoints.Add(startLoc);
+            }
+
+            if (model.EndLocation.Id == Guid.Empty)
+            {
+                model.EndLocation.Id = Guid.NewGuid();
+                var endLoc = new LocationPoint
+                {
+                    Id = model.EndLocation.Id,
+                    Name = model.EndLocation.Name,
+                    City = model.EndLocation.City,
+                    Address = model.EndLocation.Address,
+                    Latitude = model.EndLocation.Latitude,
+                    Longtitude = model.EndLocation.Longtitude
+                };
+                _context.LocationPoints.Add(endLoc);
+            }
+
+            // Zapisz przejazd
             var ride = new OfferedRide
             {
                 Id = Guid.NewGuid(),
@@ -359,50 +388,43 @@ namespace projekt_zespołowy.Controllers
                 PricePerSeat = model.PricePerSeat,
                 IsFlexiblePrice = model.IsFlexiblePrice,
                 Notes = model.Notes,
-                Status = RideStatus.Published
+                Status = RideStatus.Published,
+                StartLocationId = model.StartLocation.Id,
+                EndLocationId = model.EndLocation.Id
             };
 
-            // If StartLocation.Id provided (created via AJAX) link existing LocationPoint, otherwise create new
-            if (model.StartLocation != null && model.StartLocation.Id != Guid.Empty)
-            {
-                ride.StartLocationId = model.StartLocation.Id;
-            }
-            else
-            {
-                var startLoc = new LocationPoint
-                {
-                    Id = Guid.NewGuid(),
-                    Name = model.StartLocation.Name,
-                    City = model.StartLocation.City,
-                    Address = model.StartLocation.Address,
-                    Latitude = model.StartLocation.Latitude,
-                    Longtitude = model.StartLocation.Longtitude
-                };
-                ride.StartLocation = startLoc;
-            }
-
-            if (model.EndLocation != null && model.EndLocation.Id != Guid.Empty)
-            {
-                ride.EndLocationId = model.EndLocation.Id;
-            }
-            else
-            {
-                var endLoc = new LocationPoint
-                {
-                    Id = Guid.NewGuid(),
-                    Name = model.EndLocation.Name,
-                    City = model.EndLocation.City,
-                    Address = model.EndLocation.Address,
-                    Latitude = model.EndLocation.Latitude,
-                    Longtitude = model.EndLocation.Longtitude
-                };
-                ride.EndLocation = endLoc;
-            }
-
             _context.OfferedRides.Add(ride);
+            await _context.SaveChangesAsync(); // Wszystko zapisane w bazie
+
+            // WYŚLIJ POWIADOMIENIA DO SUBSKRYBENTÓW
+            var rideCityFrom = model.StartLocation.City.Trim().ToLower();
+            var rideCityTo = model.EndLocation.City.Trim().ToLower();
+            var rideDate = ride.DepartureTime.Date;
+
+            var subscriptions = await _context.RideSubscriptions
+                .Where(rs => rs.IsActive
+                    && rs.FromCity.ToLower() == rideCityFrom
+                    && rs.ToCity.ToLower() == rideCityTo
+                    && rs.RideDate >= rideDate && rs.RideDate < rideDate.AddDays(1))
+                .ToListAsync();
+
+            foreach (var sub in subscriptions)
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = sub.UserId,
+                    Title = "Nowa trasa pasująca do Twojej subskrypcji",
+                    Body = $"Dodano nowy przejazd: {model.StartLocation.City} → {model.EndLocation.City} w dniu {ride.DepartureTime:dd.MM.yyyy HH:mm}",
+                    CreatedAt = DateTime.UtcNow,
+                    IsRead = false
+                };
+                _context.Notifications.Add(notification);
+            }
+
             await _context.SaveChangesAsync();
 
-            // Usuń powiadomienie o zaakceptowaniu wniosku o zostanie kierowcą po dodaniu pierwszego przejazdu
+            // Usuń powiadomienie o zaakceptowaniu wniosku
             try
             {
                 var acceptNotifications = await _context.Notifications
@@ -416,7 +438,7 @@ namespace projekt_zespołowy.Controllers
             }
             catch
             {
-                // ignoruj błędy powiadomień
+                // ignoruj błędy
             }
 
             TempData["SuccessMessage"] = "Pomyślnie dodano nowy przejazd!";

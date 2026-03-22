@@ -202,7 +202,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // 1. WYKRES KOŁOWY
         var ctxUsers = document.getElementById('usersChart').getContext('2d');
         new Chart(ctxUsers, {
             type: 'doughnut',
@@ -213,7 +212,6 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
 
-        // 2. WYKRES SŁUPKOWY PIONOWY (7 DNI)
         var ctxRides = document.getElementById('ridesChart').getContext('2d');
         new Chart(ctxRides, {
             type: 'bar',
@@ -224,7 +222,6 @@
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
         });
 
-        // 3. WYKRES SŁUPKOWY POZIOMY (ZAROBKI)
         var ctxEarnings = document.getElementById('earningsChart').getContext('2d');
         new Chart(ctxEarnings, {
             type: 'bar',
@@ -235,7 +232,6 @@
             options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } }, plugins: { legend: { display: false } } }
         });
 
-        // 4. NOWY WYKRES - DNI TYGODNIA
         var ctxDays = document.getElementById('daysOfWeekChart').getContext('2d');
         new Chart(ctxDays, {
             type: 'bar',

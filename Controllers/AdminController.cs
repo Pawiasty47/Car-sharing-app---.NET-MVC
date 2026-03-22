@@ -22,19 +22,14 @@ namespace projekt_zespołowy.Controllers
             _db = db;
         }
 
-        // ==========================================
-        // 1. DASHBOARD ANALITYCZNY (Strona główna Admina)
-        // ==========================================
         public async Task<IActionResult> Index()
         {
             var vm = new AdminDashboardVM();
 
-            // A. Kierowcy vs Pasażerowie
             vm.TotalDrivers = await _db.DriverProfiles.CountAsync();
             int totalUsers = await _db.Users.CountAsync();
             vm.TotalPassengers = totalUsers - vm.TotalDrivers;
 
-            // B. Ilość przejazdów w ostatnich 7 dniach
             var sevenDaysAgo = DateTime.Today.AddDays(-6);
             var recentRides = await _db.OfferedRides
                 .Where(r => r.DepartureTime >= sevenDaysAgo)
@@ -47,7 +42,6 @@ namespace projekt_zespołowy.Controllers
                 vm.Last7DaysData.Add(recentRides.Count(r => r.DepartureTime.Date == date));
             }
 
-            // C. Tabela TOP 5 miast
             vm.TopCities = await _db.OfferedRides
                 .Include(r => r.EndLocation)
                 .Where(r => r.EndLocation != null && !string.IsNullOrEmpty(r.EndLocation.City))
@@ -57,7 +51,6 @@ namespace projekt_zespołowy.Controllers
                 .Take(5)
                 .ToListAsync();
 
-            // D. Zarobki kierowców (ost. miesiąc)
             var oneMonthAgo = DateTime.Today.AddMonths(-1);
             var earnings = await _db.Bookings
                 .Where(b => b.Ride.DepartureTime >= oneMonthAgo && b.Status == BookingStatus.Confirmed)
@@ -77,7 +70,6 @@ namespace projekt_zespołowy.Controllers
                 vm.DriverEarningsData.Add((decimal)e.Earnings);
             }
 
-            // E. Najbardziej oblegane trasy (TOP 5)
             vm.PopularRoutes = await _db.OfferedRides
                 .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
@@ -88,7 +80,6 @@ namespace projekt_zespołowy.Controllers
                 .Take(5)
                 .ToListAsync();
 
-            // F. Najaktywniejsi Pasażerowie (TOP 5)
             vm.TopPassengers = await _db.Bookings
                 .Include(b => b.Passenger)
                 .Where(b => b.Status == BookingStatus.Confirmed)
@@ -102,7 +93,6 @@ namespace projekt_zespołowy.Controllers
                 .Take(5)
                 .ToListAsync();
 
-            // G. Najgorętsze dni tygodnia (Wykres słupkowy)
             var allDates = await _db.OfferedRides.Select(r => r.DepartureTime).ToListAsync();
             var daysGroup = allDates.GroupBy(d => d.DayOfWeek).ToDictionary(g => g.Key, g => g.Count());
 
@@ -121,7 +111,6 @@ namespace projekt_zespołowy.Controllers
                 vm.DaysOfWeekData.Add(daysGroup.ContainsKey(day) ? daysGroup[day] : 0);
             }
 
-            // H. Pełna analiza zarobków wszystkich kierowców (Cała historia)
             vm.AllDriversEarnings = await _db.Bookings
                 .Where(b => b.Status == BookingStatus.Confirmed)
                 .GroupBy(b => new { b.Ride.Driver.User.FirstName, b.Ride.Driver.User.LastName })
@@ -137,9 +126,6 @@ namespace projekt_zespołowy.Controllers
             return View(vm);
         }
 
-        // ==========================================
-        // 2. LISTA UŻYTKOWNIKÓW 
-        // ==========================================
         public async Task<IActionResult> Users(string? search)
         {
             var usersQuery = _db.Users.AsQueryable();
@@ -177,9 +163,7 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // ==========================================
-        // 3. USUWANIE UŻYTKOWNIKA
-        // ==========================================
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
@@ -207,9 +191,7 @@ namespace projekt_zespołowy.Controllers
         }
     }
 
-    // ==========================================
-    // MODELE DANYCH DLA WIDOKÓW ADMINA
-    // ==========================================
+
     public class AdminUserListVM
     {
         public string Id { get; set; }

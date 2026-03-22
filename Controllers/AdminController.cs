@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace projekt_zespołowy.Controllers
 {
-    [Authorize(Roles = "Admin")] // Zabezpieczenie: Tylko dla Admina
+    [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
         private readonly UserManager<User> _userManager;
@@ -21,16 +22,131 @@ namespace projekt_zespołowy.Controllers
             _db = db;
         }
 
-        // GET: /Admin/Users
+        // ==========================================
+        // 1. DASHBOARD ANALITYCZNY (Strona główna Admina)
+        // ==========================================
+        public async Task<IActionResult> Index()
+        {
+            var vm = new AdminDashboardVM();
+
+            // A. Kierowcy vs Pasażerowie
+            vm.TotalDrivers = await _db.DriverProfiles.CountAsync();
+            int totalUsers = await _db.Users.CountAsync();
+            vm.TotalPassengers = totalUsers - vm.TotalDrivers;
+
+            // B. Ilość przejazdów w ostatnich 7 dniach
+            var sevenDaysAgo = DateTime.Today.AddDays(-6);
+            var recentRides = await _db.OfferedRides
+                .Where(r => r.DepartureTime >= sevenDaysAgo)
+                .ToListAsync();
+
+            for (int i = 6; i >= 0; i--)
+            {
+                var date = DateTime.Today.AddDays(-i);
+                vm.Last7DaysLabels.Add(date.ToString("dd.MM"));
+                vm.Last7DaysData.Add(recentRides.Count(r => r.DepartureTime.Date == date));
+            }
+
+            // C. Tabela TOP 5 miast
+            vm.TopCities = await _db.OfferedRides
+                .Include(r => r.EndLocation)
+                .Where(r => r.EndLocation != null && !string.IsNullOrEmpty(r.EndLocation.City))
+                .GroupBy(r => r.EndLocation.City)
+                .Select(g => new CityStat { CityName = g.Key, RideCount = g.Count() })
+                .OrderByDescending(c => c.RideCount)
+                .Take(5)
+                .ToListAsync();
+
+            // D. Zarobki kierowców (ost. miesiąc)
+            var oneMonthAgo = DateTime.Today.AddMonths(-1);
+            var earnings = await _db.Bookings
+                .Where(b => b.Ride.DepartureTime >= oneMonthAgo && b.Status == BookingStatus.Confirmed)
+                .GroupBy(b => new { b.Ride.Driver.User.FirstName, b.Ride.Driver.User.LastName })
+                .Select(g => new
+                {
+                    DriverName = g.Key.FirstName + " " + g.Key.LastName,
+                    Earnings = g.Sum(b => b.Ride.PricePerSeat)
+                })
+                .OrderByDescending(x => x.Earnings)
+                .Take(5)
+                .ToListAsync();
+
+            foreach (var e in earnings)
+            {
+                vm.DriverEarningsLabels.Add(e.DriverName);
+                vm.DriverEarningsData.Add((decimal)e.Earnings);
+            }
+
+            // E. Najbardziej oblegane trasy (TOP 5)
+            vm.PopularRoutes = await _db.OfferedRides
+                .Include(r => r.StartLocation)
+                .Include(r => r.EndLocation)
+                .Where(r => r.StartLocation != null && r.EndLocation != null)
+                .GroupBy(r => r.StartLocation.City + " - " + r.EndLocation.City)
+                .Select(g => new RouteStat { RouteName = g.Key, RideCount = g.Count() })
+                .OrderByDescending(r => r.RideCount)
+                .Take(5)
+                .ToListAsync();
+
+            // F. Najaktywniejsi Pasażerowie (TOP 5)
+            vm.TopPassengers = await _db.Bookings
+                .Include(b => b.Passenger)
+                .Where(b => b.Status == BookingStatus.Confirmed)
+                .GroupBy(b => new { b.Passenger.FirstName, b.Passenger.LastName })
+                .Select(g => new PassengerStat
+                {
+                    FullName = g.Key.FirstName + " " + g.Key.LastName,
+                    RideCount = g.Count()
+                })
+                .OrderByDescending(p => p.RideCount)
+                .Take(5)
+                .ToListAsync();
+
+            // G. Najgorętsze dni tygodnia (Wykres słupkowy)
+            var allDates = await _db.OfferedRides.Select(r => r.DepartureTime).ToListAsync();
+            var daysGroup = allDates.GroupBy(d => d.DayOfWeek).ToDictionary(g => g.Key, g => g.Count());
+
+            var polishDays = new Dictionary<DayOfWeek, string> {
+                { DayOfWeek.Monday, "Pn" }, { DayOfWeek.Tuesday, "Wt" },
+                { DayOfWeek.Wednesday, "Śr" }, { DayOfWeek.Thursday, "Czw" },
+                { DayOfWeek.Friday, "Pt" }, { DayOfWeek.Saturday, "Sb" },
+                { DayOfWeek.Sunday, "Nd" }
+            };
+
+            var orderedDays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };
+
+            foreach (var day in orderedDays)
+            {
+                vm.DaysOfWeekLabels.Add(polishDays[day]);
+                vm.DaysOfWeekData.Add(daysGroup.ContainsKey(day) ? daysGroup[day] : 0);
+            }
+
+            // H. Pełna analiza zarobków wszystkich kierowców (Cała historia)
+            vm.AllDriversEarnings = await _db.Bookings
+                .Where(b => b.Status == BookingStatus.Confirmed)
+                .GroupBy(b => new { b.Ride.Driver.User.FirstName, b.Ride.Driver.User.LastName })
+                .Select(g => new DriverAnalysisStat
+                {
+                    DriverName = g.Key.FirstName + " " + g.Key.LastName,
+                    CompletedRides = g.Count(),
+                    TotalEarnings = g.Sum(b => b.Ride.PricePerSeat)
+                })
+                .OrderByDescending(d => d.TotalEarnings)
+                .ToListAsync();
+
+            return View(vm);
+        }
+
+        // ==========================================
+        // 2. LISTA UŻYTKOWNIKÓW 
+        // ==========================================
         public async Task<IActionResult> Users(string? search)
         {
-            // 1. Pobieramy wszystkich użytkowników
             var usersQuery = _db.Users.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 search = search.ToLower();
-
                 usersQuery = usersQuery.Where(u =>
                     (u.FirstName + " " + u.LastName).ToLower().Contains(search) ||
                     u.Email.ToLower().Contains(search));
@@ -38,13 +154,7 @@ namespace projekt_zespołowy.Controllers
 
             var users = await usersQuery.ToListAsync();
 
-            // 2. Pobieramy ID użytkowników, którzy mają profil w DriverProfiles
-            var profileUserIds = await _db.DriverProfiles
-                .Select(d => d.UserId)
-                .ToListAsync();
-
-            // 3. Pobieramy ID użytkowników, którzy mają rolę "Driver" (z Identity)
-            // To jest kluczowe, bo Anna może mieć rolę, ale brak profilu (np. błąd przy tworzeniu)
+            var profileUserIds = await _db.DriverProfiles.Select(d => d.UserId).ToListAsync();
             var usersInDriverRole = await _userManager.GetUsersInRoleAsync("Driver");
             var roleUserIds = usersInDriverRole.Select(u => u.Id).ToList();
 
@@ -52,48 +162,37 @@ namespace projekt_zespołowy.Controllers
 
             foreach (var user in users)
             {
-                // Sprawdzamy czy ID jest w liście profili LUB w liście ról
                 bool hasProfile = profileUserIds.Contains(user.Id);
                 bool hasRole = roleUserIds.Contains(user.Id);
 
-                var vm = new AdminUserListVM
+                model.Add(new AdminUserListVM
                 {
                     Id = user.Id.ToString(),
                     Email = user.Email,
                     FullName = $"{user.FirstName} {user.LastName}",
-
-                    // Uznajemy za kierowcę, jeśli ma profil ALBO rolę (dla pewności)
                     IsDriver = hasProfile || hasRole
-                };
-
-                model.Add(vm);
+                });
             }
 
             return View(model);
         }
 
-        // POST: /Admin/Delete/5
+        // ==========================================
+        // 3. USUWANIE UŻYTKOWNIKA
+        // ==========================================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
+            if (user == null) { TempData["Error"] = "Nie znaleziono użytkownika."; return RedirectToAction(nameof(Users)); }
 
-            if (user == null)
-            {
-                TempData["Error"] = "Nie znaleziono użytkownika.";
-                return RedirectToAction(nameof(Users));
-            }
-
-            var currentUserId = _userManager.GetUserId(User);
-
-            if (user.Id.ToString() == currentUserId)
+            if (user.Id.ToString() == _userManager.GetUserId(User))
             {
                 TempData["Error"] = "Nie możesz usunąć konta, na którym jesteś zalogowany!";
                 return RedirectToAction(nameof(Users));
             }
 
-            // Najpierw usuwamy zależne dane (jeśli kaskadowanie w bazie nie zadziała)
             var driverProfile = await _db.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == user.Id);
             if (driverProfile != null) _db.DriverProfiles.Remove(driverProfile);
 
@@ -101,19 +200,47 @@ namespace projekt_zespołowy.Controllers
             if (passengerProfile != null) _db.PassengerProfiles.Remove(passengerProfile);
 
             await _db.SaveChangesAsync();
-
             var result = await _userManager.DeleteAsync(user);
 
-            if (result.Succeeded)
-            {
-                TempData["Success"] = "Użytkownik został usunięty.";
-            }
-            else
-            {
-                TempData["Error"] = "Wystąpił błąd podczas usuwania użytkownika.";
-            }
-
+            TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded ? "Użytkownik został usunięty." : "Wystąpił błąd.";
             return RedirectToAction(nameof(Users));
         }
     }
+
+    // ==========================================
+    // MODELE DANYCH DLA WIDOKÓW ADMINA
+    // ==========================================
+    public class AdminUserListVM
+    {
+        public string Id { get; set; }
+        public string Email { get; set; }
+        public string FullName { get; set; }
+        public bool IsDriver { get; set; }
+    }
+
+    public class AdminDashboardVM
+    {
+        public int TotalDrivers { get; set; }
+        public int TotalPassengers { get; set; }
+
+        public List<string> Last7DaysLabels { get; set; } = new List<string>();
+        public List<int> Last7DaysData { get; set; } = new List<int>();
+
+        public List<CityStat> TopCities { get; set; } = new List<CityStat>();
+
+        public List<string> DriverEarningsLabels { get; set; } = new List<string>();
+        public List<decimal> DriverEarningsData { get; set; } = new List<decimal>();
+
+        public List<RouteStat> PopularRoutes { get; set; } = new List<RouteStat>();
+        public List<PassengerStat> TopPassengers { get; set; } = new List<PassengerStat>();
+        public List<string> DaysOfWeekLabels { get; set; } = new List<string>();
+        public List<int> DaysOfWeekData { get; set; } = new List<int>();
+
+        public List<DriverAnalysisStat> AllDriversEarnings { get; set; } = new List<DriverAnalysisStat>();
+    }
+
+    public class CityStat { public string CityName { get; set; } public int RideCount { get; set; } }
+    public class RouteStat { public string RouteName { get; set; } public int RideCount { get; set; } }
+    public class PassengerStat { public string FullName { get; set; } public int RideCount { get; set; } }
+    public class DriverAnalysisStat { public string DriverName { get; set; } public int CompletedRides { get; set; } public decimal TotalEarnings { get; set; } }
 }

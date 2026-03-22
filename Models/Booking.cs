@@ -11,25 +11,27 @@ namespace projekt_zespołowy.Models
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        // Relacja do Przejazdu
         public Guid RideId { get; set; }
         [ForeignKey("RideId")]
         public virtual OfferedRide Ride { get; set; }
 
-        // Relacja do Pasażera (Użytkownika systemu)
         public Guid PassengerUserId { get; set; }
         [ForeignKey("PassengerUserId")]
-        public virtual User Passenger { get; set; } // Zmieniono z PassengerProfile na User
+        public virtual User Passenger { get; set; }
 
         public int SeatsRequested { get; set; } = 1;
 
-        public BookingStatus Status { get; set; } = BookingStatus.Pending; // Domyślnie potwierdzona dla uproszczenia MVP
+        // NOWE POLE: Kwota zablokowana na portfelu pasażera w momencie wysłania prośby
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal FrozenAmount { get; set; }
+
+        public BookingStatus Status { get; set; } = BookingStatus.Pending;
         public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.NotRequired;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public string? CommentByPassenger { get; set; } // Zmieniono na nullable (?)
-        public string? CommentByDriver { get; set; }    // Zmieniono na nullable (?)
+        public string? CommentByPassenger { get; set; }
+        public string? CommentByDriver { get; set; }
         public virtual Payment? Payment { get; set; }
     }
 }

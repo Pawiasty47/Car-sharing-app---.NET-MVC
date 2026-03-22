@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using projekt_zespołowy.Models;
 
-
 namespace projekt_zespołowy.Controllers
 {
     [Authorize]
@@ -19,7 +18,6 @@ namespace projekt_zespołowy.Controllers
             _userManager = userManager;
         }
 
-        // 1. MOJE REZERWACJE (Lista biletów pasażera)
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -36,7 +34,6 @@ namespace projekt_zespołowy.Controllers
             return View(myBookings);
         }
 
-        // 2. TWORZENIE REZERWACJI (Domyślnie status PENDING)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Guid rideId, int seats = 1, string? comment = null)
@@ -44,57 +41,69 @@ namespace projekt_zespołowy.Controllers
             var user = await _userManager.GetUserAsync(User);
             var ride = await _context.OfferedRides.FirstOrDefaultAsync(r => r.Id == rideId);
 
-            if (ride == null) return NotFound();
+            if (user == null || ride == null) return NotFound();
 
-            // Walidacja: Kierowca nie może rezerwować u siebie
+            // 1. Walidacje podstawowe
             if (ride.DriverId == user.Id)
             {
                 TempData["ErrorMessage"] = "Nie możesz zarezerwować miejsca we własnym przejeździe.";
                 return RedirectToAction("Details", "Rides", new { id = rideId });
             }
 
-            // Walidacja: Dostępność miejsc (wstępna - zablokowanie overbookingu)
             if ((ride.SeatsOffered - ride.SeatsTaken) < seats)
             {
                 TempData["ErrorMessage"] = "Brak wystarczającej liczby wolnych miejsc.";
                 return RedirectToAction("Details", "Rides", new { id = rideId });
             }
 
-            // Walidacja: Duplikaty (aktywne lub oczekujące)
-            bool alreadyBooked = await _context.Bookings
-                .AnyAsync(b => b.RideId == rideId && b.PassengerUserId == user.Id &&
-                               (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed));
-
-            if (alreadyBooked)
+            // 2. Walidacja SALDA (Mrożenie środków)
+            decimal totalToFreeze = ride.PricePerSeat * seats;
+            if (user.Balance < totalToFreeze)
             {
-                TempData["ErrorMessage"] = "Masz już aktywną rezerwację lub oczekującą prośbę na ten przejazd.";
+                TempData["ErrorMessage"] = $"Niewystarczające środki na koncie. Potrzebujesz {totalToFreeze:C2}.";
                 return RedirectToAction("Details", "Rides", new { id = rideId });
             }
 
-            var booking = new Booking
+            // 3. TRANSAKCJA - mrozimy kasę i tworzymy rezerwację
+            using (var transaction = await _context.Database.BeginTransactionAsync())
             {
-                RideId = rideId,
-                PassengerUserId = user.Id,
-                SeatsRequested = seats,
-                CommentByPassenger = comment,
-                Status = BookingStatus.Pending, // Oczekuje na akceptację
-                CreatedAt = DateTime.UtcNow
-            };
+                try
+                {
+                    // Odejmij środki z portfela pasażera
+                    user.Balance -= totalToFreeze;
+                    await _userManager.UpdateAsync(user);
 
-            // ZMIANA: Natychmiastowo zajmujemy miejsce, mimo że to "Pending". Zapobiega overbookingowi.
-            ride.SeatsTaken += seats;
+                    var booking = new Booking
+                    {
+                        RideId = rideId,
+                        PassengerUserId = user.Id,
+                        SeatsRequested = seats,
+                        CommentByPassenger = comment,
+                        Status = BookingStatus.Pending,
+                        FrozenAmount = totalToFreeze, // Zapisujemy ile zamroziliśmy
+                        CreatedAt = DateTime.UtcNow
+                    };
 
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
+                    ride.SeatsTaken += seats;
+                    _context.Bookings.Add(booking);
 
-            TempData["SuccessMessage"] = "Wysłano prośbę o rezerwację! Miejsce zostało dla Ciebie zablokowane.";
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    TempData["SuccessMessage"] = $"Wysłano prośbę! Zablokowano {totalToFreeze:C2} na Twoim koncie.";
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["ErrorMessage"] = "Wystąpił błąd podczas przetwarzania rezerwacji. Spróbuj ponownie.";
+                }
+            }
+
             return RedirectToAction("Details", "Rides", new { id = rideId });
         }
 
-        // 3. AKCEPTACJA PASAŻERA (Dla Kierowcy i Admina)
         [HttpPost]
         [ValidateAntiForgeryToken]
-
         public async Task<IActionResult> Accept(Guid bookingId)
         {
             var booking = await _context.Bookings
@@ -102,94 +111,81 @@ namespace projekt_zespołowy.Controllers
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             if (booking == null) return NotFound();
-
             var user = await _userManager.GetUserAsync(User);
 
-            if (booking.Ride.DriverId != user.Id && !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
+            if (booking.Ride.DriverId != user.Id && !User.IsInRole("Admin")) return Forbid();
 
             booking.Status = BookingStatus.Confirmed;
 
-            // ✅ TWORZENIE / POBIERANIE CHATA
-            var chat = await _context.Chats
-                .FirstOrDefaultAsync(c => c.RideId == booking.RideId);
-
+            // Logika czatu (bez zmian w stosunku do Twojego kodu)
+            var chat = await _context.Chats.FirstOrDefaultAsync(c => c.RideId == booking.RideId);
             if (chat == null)
             {
-                chat = new Chat
-                {
-                    Id = Guid.NewGuid(),
-                    RideId = booking.RideId
-                };
-
+                chat = new Chat { Id = Guid.NewGuid(), RideId = booking.RideId };
                 _context.Chats.Add(chat);
-
-                // kierowca
-                _context.ChatParticipants.Add(new ChatParticipant
-                {
-                    Id = Guid.NewGuid(),
-                    ChatId = chat.Id,
-                    UserId = booking.Ride.DriverId
-                });
+                _context.ChatParticipants.Add(new ChatParticipant { Id = Guid.NewGuid(), ChatId = chat.Id, UserId = booking.Ride.DriverId });
             }
 
-            // pasażer
-            bool alreadyParticipant = await _context.ChatParticipants
-                .AnyAsync(p => p.ChatId == chat.Id && p.UserId == booking.PassengerUserId);
-
-            if (!alreadyParticipant)
+            if (!await _context.ChatParticipants.AnyAsync(p => p.ChatId == chat.Id && p.UserId == booking.PassengerUserId))
             {
-                _context.ChatParticipants.Add(new ChatParticipant
-                {
-                    Id = Guid.NewGuid(),
-                    ChatId = chat.Id,
-                    UserId = booking.PassengerUserId
-                });
+                _context.ChatParticipants.Add(new ChatParticipant { Id = Guid.NewGuid(), ChatId = chat.Id, UserId = booking.PassengerUserId });
             }
 
             await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Zaakceptowano pasażera.";
+            TempData["SuccessMessage"] = "Zaakceptowano pasażera. Środki pozostają zablokowane do czasu zakończenia trasy.";
             return RedirectToAction("Details", "Rides", new { id = booking.RideId });
         }
 
-        // 4. ODRZUCENIE PASAŻERA Z POWODEM (Dla Kierowcy i Admina)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reject(Guid bookingId, string? reason)
         {
             var booking = await _context.Bookings
                 .Include(b => b.Ride)
+                .Include(b => b.Passenger)
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             if (booking == null) return NotFound();
-
             var user = await _userManager.GetUserAsync(User);
 
-            if (booking.Ride.DriverId != user.Id && !User.IsInRole("Admin"))
+            if (booking.Ride.DriverId != user.Id && !User.IsInRole("Admin")) return Forbid();
+
+            using (var transaction = await _context.Database.BeginTransactionAsync())
             {
-                return Forbid();
+                try
+                {
+                    // ZWROT ŚRODKÓW przy odrzuceniu
+                    if (booking.FrozenAmount > 0)
+                    {
+                        booking.Passenger.Balance += booking.FrozenAmount;
+                        await _userManager.UpdateAsync(booking.Passenger);
+                    }
+
+                    if (booking.Status == BookingStatus.Pending)
+                    {
+                        booking.Ride.SeatsTaken -= booking.SeatsRequested;
+                    }
+
+                    booking.Status = BookingStatus.Rejected;
+                    booking.CommentByDriver = reason;
+                    decimal returnedAmount = booking.FrozenAmount;
+                    booking.FrozenAmount = 0; // Wyczyszczenie po zwrocie
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    TempData["SuccessMessage"] = $"Odrzucono prośbę. Środki ({returnedAmount:C2}) wróciły do pasażera.";
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["ErrorMessage"] = "Błąd podczas odrzucania rezerwacji.";
+                }
             }
 
-            // ZMIANA: Skoro przy "Pending" zajęliśmy miejsca, to przy odrzuceniu musimy je oddać!
-            if (booking.Status == BookingStatus.Pending && booking.Ride != null)
-            {
-                booking.Ride.SeatsTaken -= booking.SeatsRequested;
-                if (booking.Ride.SeatsTaken < 0) booking.Ride.SeatsTaken = 0; // Zabezpieczenie na wszelki wypadek
-            }
-
-            booking.Status = BookingStatus.Rejected;
-            booking.CommentByDriver = reason;
-
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Odrzucono prośbę o rezerwację. Miejsca wróciły do puli.";
             return RedirectToAction("Details", "Rides", new { id = booking.RideId });
         }
 
-        // 5. ANULOWANIE / USUWANIE REZERWACJI (Przez pasażera)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancel(Guid id)
@@ -197,34 +193,52 @@ namespace projekt_zespołowy.Controllers
             var user = await _userManager.GetUserAsync(User);
             var booking = await _context.Bookings
                 .Include(b => b.Ride)
+                .Include(b => b.Passenger)
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking == null) return NotFound();
-
             if (booking.PassengerUserId != user.Id) return Forbid();
 
-            // ZMIANA LOGIKI ZWALNIANIA MIEJSC:
-            // Musimy oddać miejsca, jeśli pasażer zrezygnuje zarówno jako ZATWIERDZONY, jak i w trakcie OCZEKIWANIA
-            if ((booking.Status == BookingStatus.Confirmed || booking.Status == BookingStatus.Pending) && booking.Ride != null)
+            using (var transaction = await _context.Database.BeginTransactionAsync())
             {
-                booking.Ride.SeatsTaken -= booking.SeatsRequested;
-                if (booking.Ride.SeatsTaken < 0) booking.Ride.SeatsTaken = 0;
+                try
+                {
+                    // ZWROT ŚRODKÓW przy anulowaniu przez pasażera
+                    if (booking.FrozenAmount > 0)
+                    {
+                        user.Balance += booking.FrozenAmount;
+                        await _userManager.UpdateAsync(user);
+                    }
+
+                    if (booking.Status == BookingStatus.Confirmed || booking.Status == BookingStatus.Pending)
+                    {
+                        booking.Ride.SeatsTaken -= booking.SeatsRequested;
+                    }
+
+                    decimal returnedAmount = booking.FrozenAmount;
+                    booking.FrozenAmount = 0;
+
+                    if (booking.Status == BookingStatus.Confirmed)
+                    {
+                        booking.Status = BookingStatus.Cancelled;
+                    }
+                    else
+                    {
+                        _context.Bookings.Remove(booking);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    TempData["SuccessMessage"] = $"Anulowano. Zwrócono {returnedAmount:C2} na Twoje konto.";
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["ErrorMessage"] = "Błąd podczas anulowania rezerwacji.";
+                }
             }
 
-            if (booking.Status == BookingStatus.Confirmed)
-            {
-                booking.Status = BookingStatus.Cancelled;
-                TempData["SuccessMessage"] = "Rezerwacja została anulowana. Zarezerwowane miejsca zostały zwolnione.";
-            }
-            else
-            {
-                // Jeśli był Pending, Rejected lub już Cancelled -> po prostu usuwamy z listy,
-                // a jeśli był Pending, to miejsca zostały oddane parę linijek wyżej.
-                _context.Bookings.Remove(booking);
-                TempData["SuccessMessage"] = "Zgłoszenie zostało usunięte z Twojej listy.";
-            }
-
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
     }

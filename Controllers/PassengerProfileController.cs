@@ -65,6 +65,7 @@ namespace projekt_zespołowy.Controllers
                 LastName = user.LastName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,
+                Balance = user.Balance,
                 ExistingProfilePicture = profile.ProfilePicture,
 
                 IsSmoker = profile.IsSmoker,
@@ -159,6 +160,32 @@ namespace projekt_zespołowy.Controllers
 
             TempData["SuccessMessage"] = "Zapisano zmiany!";
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddFunds(decimal amount)
+        {
+            if (amount <= 0) return RedirectToAction("Index");
+
+            var user = await _userManager.GetUserAsync(User);
+            user.Balance += amount;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> WithdrawFunds(decimal amount)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (amount <= 0 || user.Balance < amount)
+                return RedirectToAction("Index");
+
+            user.Balance -= amount;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Index");
         }
     }
 }

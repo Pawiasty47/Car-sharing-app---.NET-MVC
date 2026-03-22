@@ -114,6 +114,67 @@
                 </div>
             </div>
 
+            <div class="mb-5">
+                <h4 class="fw-bold mb-3 text-secondary">
+                    <i class="bi bi-wallet2 me-2"></i> Mój Portfel
+                </h4>
+
+                <div class="row g-4">
+
+                    <!-- Saldo -->
+                    <div class="col-md-5">
+                        <div class="card bg-light border-0 shadow-sm p-4 h-100">
+                            <small class="text-muted text-uppercase fw-bold">Dostępne środki</small>
+                            <h2 class="display-6 fw-bold text-success mb-0">
+                                @Model.Balance.ToString("C2")
+                            </h2>
+                        </div>
+                    </div>
+
+                    <!-- Formularze -->
+                    <div class="col-md-7">
+                        <div class="card border-0 shadow-sm p-4 h-100">
+
+                            <!-- Doładowanie -->
+                            <form asp-action="AddFunds" method="post" class="row g-2 mb-3">
+                                @Html.AntiForgeryToken()
+                                <div class="col-8">
+                                    <div class="input-group">
+                                        <input type="number" name="amount" class="form-control"
+                                               placeholder="Kwota" step="0.01" min="1" required>
+                                        <span class="input-group-text">zł</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-plus-circle me-1"></i> Doładuj
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- Wypłata -->
+                            <form asp-action="WithdrawFunds" method="post" class="row g-2">
+                                @Html.AntiForgeryToken()
+                                <div class="col-8">
+                                    <div class="input-group">
+                                        <input type="number" name="amount" class="form-control"
+                                               placeholder="Kwota" step="0.01" min="1" required>
+                                        <span class="input-group-text">zł</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <button type="submit" class="btn btn-outline-danger w-100">
+                                        <i class="bi bi-dash-circle me-1"></i> Wypłać
+                                    </button>
+                                </div>
+                            </form>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <div class="d-flex flex-wrap gap-3">
                 <a asp-controller="Booking" asp-action="Index" class="btn btn-success px-4">
                     <i class="bi bi-ticket-perforated me-2"></i> Moje rezerwacje

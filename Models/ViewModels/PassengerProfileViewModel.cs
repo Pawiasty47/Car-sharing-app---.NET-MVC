@@ -9,6 +9,7 @@ namespace projekt_zespołowy.Models.ViewModels
         public string LastName { get; set; }
         public string Email { get; set; }
         public string? PhoneNumber { get; set; }
+        public decimal Balance { get; set; }
 
         // Preferencje
         public bool IsSmoker { get; set; }

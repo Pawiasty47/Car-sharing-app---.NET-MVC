@@ -8,6 +8,7 @@ namespace projekt_zespołowy.Models
     {
         public string FirstName { get; set; }
         public string LastName { get; set; }
+        public decimal Balance { get; set; }
 
         public virtual DriverProfile DriverProfile { get; set; }
         public virtual PassengerProfile PassengerProfile { get; set; }

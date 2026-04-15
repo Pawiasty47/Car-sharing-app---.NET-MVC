@@ -18,7 +18,6 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Review> Reviews { get; set; }
-    public DbSet<CityIncentive> CityIncentives { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Waypoint> Waypoints { get; set; }
     public DbSet<DriverApplication> DriverApplications { get; set; }

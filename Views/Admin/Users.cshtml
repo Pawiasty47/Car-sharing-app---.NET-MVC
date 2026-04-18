@@ -88,8 +88,24 @@
                                 {
                                     <span class="badge bg-secondary" style="opacity: 0.5">NIE</span>
                                 }
-                            </td>
                             <td class="text-end">
+                                    @if (!user.IsDriver)
+                                    {
+                                    <form asp-action="MakeDriver" asp-route-id="@user.Id" method="post" class="d-inline me-1">
+                                        <button type="submit" class="btn btn-sm btn-outline-success"
+                                                onclick="return confirm('Czy na pewno chcesz nadać uprawnienia kierowcy użytkownikowi @user.FullName?');">
+                                            <i class="bi bi-car-front-fill"></i> Kierowca
+                                        </button>
+                                    </form>
+                                    }
+
+                                <form asp-action="MakeAdmin" asp-route-id="@user.Id" method="post" class="d-inline me-1">
+                                    <button type="submit" class="btn btn-sm btn-outline-warning text-dark"
+                                            onclick="return confirm('Czy na pewno chcesz nadać uprawnienia administratora użytkownikowi @user.FullName?');">
+                                        <i class="bi bi-shield-lock-fill"></i> Admin
+                                    </button>
+                                </form>
+
                                 <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
                                             onclick="return confirm('Czy na pewno chcesz usunąć użytkownika @user.FullName?');">

@@ -24,64 +24,79 @@
                 </div>
             }
             <div class="mb-3">
-                <label class="form-label">Zmień zdjęcie</label>
+                <label asp-for="ProfilePictureFile" class="form-label">Zmień zdjęcie profilowe</label>
                 <input asp-for="ProfilePictureFile" class="form-control" type="file" accept=".png,.jpg,.jpeg" />
             </div>
+
         </div>
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <label asp-for="FirstName" class="form-label"></label>
-                <input asp-for="FirstName" class="form-control" />
+                <label asp-for="FirstName" class="form-label">Imię</label>
+                <input asp-for="FirstName" class="form-control" placeholder="Wpisz swoje imię" />
                 <span asp-validation-for="FirstName" class="text-danger"></span>
             </div>
             <div class="col-md-6">
-                <label asp-for="LastName" class="form-label"></label>
-                <input asp-for="LastName" class="form-control" />
+                <label asp-for="LastName" class="form-label">Nazwisko</label>
+                <input asp-for="LastName" class="form-control" placeholder="Wpisz swoje nazwisko" />
                 <span asp-validation-for="LastName" class="text-danger"></span>
             </div>
         </div>
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <label asp-for="Email" class="form-label"></label>
-                <input asp-for="Email" class="form-control" />
+                <label asp-for="Email" class="form-label">Adres e-mail</label>
+                <input asp-for="Email" class="form-control" placeholder="np. jan.kowalski@email.com" />
+                <span asp-validation-for="Email" class="text-danger"></span>
             </div>
             <div class="col-md-6">
-                <label asp-for="PhoneNumber" class="form-label"></label>
-                <input asp-for="PhoneNumber" class="form-control" />
+                <label asp-for="PhoneNumber" class="form-label">Numer telefonu</label>
+                <input asp-for="PhoneNumber" class="form-control" placeholder="np. 123 456 789" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
             </div>
         </div>
 
-        <div class="card p-3 bg-light mt-4">
-            <h5 class="mb-3">Moje preferencje w podróży</h5>
+        <div class="card p-4 border-0 shadow-sm bg-light mt-4">
+            <h5 class="mb-4"><i class="bi bi-person-lines-fill me-2"></i>Moje preferencje w podróży</h5>
 
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" asp-for="PrefersMusic" />
-                <label class="form-check-label" asp-for="PrefersMusic">Lubię słuchać muzyki (zaznacz) / Nie lubię głośnej muzyki (odznacz)</label>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" asp-for="PrefersMusic" id="PrefersMusic" />
+                <label class="form-check-label user-select-none" for="PrefersMusic">
+                    Lubię słuchać muzyki podczas jazdy
+                </label>
             </div>
 
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" asp-for="AcceptsPets" />
-                <label class="form-check-label" asp-for="AcceptsPets">Akceptuję zwierzęta (zaznacz) / Nie akceptuję zwierząt (odznacz)</label>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" asp-for="AcceptsPets" id="AcceptsPets" />
+                <label class="form-check-label user-select-none" for="AcceptsPets">
+                    Akceptuję podróżowanie ze zwierzętami
+                </label>
             </div>
 
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" asp-for="AcceptsEating" />
-                <label class="form-check-label" asp-for="AcceptsEating">Nie przeszkadza mi jedzenie w aucie (zaznacz) / Nie toleruję jedzenia (odznacz)</label>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" asp-for="AcceptsEating" id="AcceptsEating" />
+                <label class="form-check-label user-select-none" for="AcceptsEating">
+                    Nie przeszkadza mi jedzenie w samochodzie
+                </label>
             </div>
 
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" asp-for="PrefersQuietRide" />
-                <label class="form-check-label" asp-for="PrefersQuietRide">Preferuję ciszę (zaznacz) / Chętnie porozmawiam (odznacz)</label>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" asp-for="PrefersQuietRide" id="PrefersQuietRide" />
+                <label class="form-check-label user-select-none" for="PrefersQuietRide">
+                    Preferuję ciszę (odpoczynek zamiast rozmowy)
+                </label>
             </div>
 
             <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" asp-for="IsSmoker" />
-                <label class="form-check-label" asp-for="IsSmoker">Nie toleruję palenia (zaznacz) / Palę (odznacz)</label>
+                <input class="form-check-input" type="checkbox" asp-for="IsSmoker" id="IsSmoker" />
+                <label class="form-check-label user-select-none" for="IsSmoker">
+                    Jestem osobą palącą
+                </label>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-success btn-lg mt-4 w-100">Zapisz zmiany</button>
+        <button type="submit" class="btn btn-success btn-lg mt-4 w-100">
+            <i class="bi bi-save me-2"></i>Zapisz zmiany
+        </button>
     </form>
 </div>

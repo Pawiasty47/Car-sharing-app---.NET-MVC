@@ -20,7 +20,7 @@
         public decimal PricePerSeat { get; set; }
         public bool IsFlexiblePrice { get; set; } = false;
         public RideStatus Status { get; set; } = RideStatus.Draft;
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
         public ICollection<Booking> Bookings { get; set; }
     }
 }

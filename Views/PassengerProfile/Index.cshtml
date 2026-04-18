@@ -121,9 +121,9 @@
 
                 <div class="row g-4">
 
-                    <!-- Saldo -->
                     <div class="col-md-5">
-                        <div class="card bg-light border-0 shadow-sm p-4 h-100">
+                        <div class="card bg-light border-0 shadow-sm p-4 h-100
+                d-flex justify-content-center align-items-center text-center">
                             <small class="text-muted text-uppercase fw-bold">Dostępne środki</small>
                             <h2 class="display-6 fw-bold text-success mb-0">
                                 @Model.Balance.ToString("C2")
@@ -131,17 +131,21 @@
                         </div>
                     </div>
 
-                    <!-- Formularze -->
+
                     <div class="col-md-7">
                         <div class="card border-0 shadow-sm p-4 h-100">
+                            <div class="alert alert-info py-2 mb-3" style="font-size: 0.85rem;">
+                                <i class="bi bi-info-circle me-1"></i> System obsługuje <strong>tylko pełne kwoty</strong> (bez groszy).
+                            </div>
 
-                            <!-- Doładowanie -->
                             <form asp-action="AddFunds" method="post" class="row g-2 mb-3">
                                 @Html.AntiForgeryToken()
                                 <div class="col-8">
                                     <div class="input-group">
                                         <input type="number" name="amount" class="form-control"
-                                               placeholder="Kwota" step="0.01" min="1" required>
+                                               placeholder="Kwota" step="1" min="1" required
+                                               oninvalid="this.setCustomValidity('Można wpłacać i wypłacać tylko pełne kwoty (bez groszy).')"
+                                               oninput="this.setCustomValidity('')">
                                         <span class="input-group-text">zł</span>
                                     </div>
                                 </div>
@@ -152,13 +156,14 @@
                                 </div>
                             </form>
 
-                            <!-- Wypłata -->
                             <form asp-action="WithdrawFunds" method="post" class="row g-2">
                                 @Html.AntiForgeryToken()
                                 <div class="col-8">
                                     <div class="input-group">
                                         <input type="number" name="amount" class="form-control"
-                                               placeholder="Kwota" step="0.01" min="1" required>
+                                               placeholder="Kwota" step="1" min="1" required
+                                               oninvalid="this.setCustomValidity('Można wpłacać i wypłacać tylko pełne kwoty (bez groszy).')"
+                                               oninput="this.setCustomValidity('')">
                                         <span class="input-group-text">zł</span>
                                     </div>
                                 </div>

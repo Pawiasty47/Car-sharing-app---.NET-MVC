@@ -67,7 +67,7 @@ namespace projekt_zespołowy.Models.ViewModels
 
         [Display(Name = "Dodatkowe uwagi dla pasażerów")]
         [MaxLength(500)]
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
 
         // Dane do widoku (DropDownList)
         public IEnumerable<Vehicle> AvailableVehicles { get; set; }

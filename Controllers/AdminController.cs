@@ -189,6 +189,67 @@ namespace projekt_zespołowy.Controllers
             TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded ? "Użytkownik został usunięty." : "Wystąpił błąd.";
             return RedirectToAction(nameof(Users));
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MakeDriver(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "Nie znaleziono użytkownika.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            if (await _userManager.IsInRoleAsync(user, "Driver"))
+            {
+                TempData["Error"] = $"Użytkownik {user.FirstName} ma już uprawnienia kierowcy.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            var result = await _userManager.AddToRoleAsync(user, "Driver");
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"Pomyślnie nadano uprawnienia kierowcy użytkownikowi {user.FirstName} {user.LastName}.";
+            }
+            else
+            {
+                TempData["Error"] = "Wystąpił błąd podczas nadawania uprawnień kierowcy.";
+            }
+
+            return RedirectToAction(nameof(Users));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MakeAdmin(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                TempData["Error"] = "Nie znaleziono użytkownika.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                TempData["Error"] = $"Użytkownik {user.FirstName} jest już administratorem.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            var result = await _userManager.AddToRoleAsync(user, "Admin");
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = $"Pomyślnie nadano uprawnienia administratora użytkownikowi {user.FirstName} {user.LastName}.";
+            }
+            else
+            {
+                TempData["Error"] = "Wystąpił błąd podczas nadawania uprawnień administratora.";
+            }
+
+            return RedirectToAction(nameof(Users));
+        }
     }
 
 

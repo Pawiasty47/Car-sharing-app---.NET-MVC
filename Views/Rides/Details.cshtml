@@ -86,8 +86,8 @@
                 <div class="card-body">
                     <div class="row text-center align-items-center mb-4">
                         <div class="col-5">
-                            <h3 class="fw-bold text-primary">@Model.StartLocation.City</h3>
-                            <p class="text-muted mb-0">@Model.StartLocation.Address</p>
+                            <h3 id="startCityLabel" class="fw-bold text-primary">@(Model.StartLocation?.City ?? "Nieznane")</h3>
+                            <p id="startAddressLabel" class="text-muted mb-0">@(Model.StartLocation?.Address ?? "")</p>
                             <span class="badge bg-light text-dark border">
                                 @Model.DepartureTime.ToString("dd.MM.yyyy HH:mm")
                             </span>
@@ -96,8 +96,8 @@
                             <i class="bi bi-arrow-right fs-1 text-muted"></i>
                         </div>
                         <div class="col-5">
-                            <h3 class="fw-bold text-primary">@Model.EndLocation.City</h3>
-                            <p class="text-muted mb-0">@Model.EndLocation.Address</p>
+                            <h3 id="endCityLabel" class="fw-bold text-primary">@(Model.EndLocation?.City ?? "Nieznane")</h3>
+                            <p id="endAddressLabel" class="text-muted mb-0">@(Model.EndLocation?.Address ?? "")</p>
                             @if (Model.ArrivalTime.HasValue)
                             {
                                 <span class="badge bg-light text-dark border">
@@ -108,6 +108,9 @@
                     </div>
 
 @section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+    <!-- Optional: enable control icons dependency (already included in Leaflet) -->
     <script>
         (function(){
             // Render coordinates if present, otherwise null so we can detect missing data
@@ -116,11 +119,33 @@
             var endLat = @(Model.EndLocation != null && Model.EndLocation.Latitude != 0 ? Model.EndLocation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
             var endLng = @(Model.EndLocation != null && Model.EndLocation.Longtitude != 0 ? Model.EndLocation.Longtitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
 
-            function fetchCoords(query){
-                return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(query), { headers: { 'Accept': 'application/json' } })
-                    .then(function(r){ if(!r.ok) throw new Error('geocode failed'); return r.json(); })
-                    .then(function(js){ if(js && js.length){ return { lat: parseFloat(js[0].lat), lon: parseFloat(js[0].lon) }; } return null; })
-                    .catch(function(){ return null; });
+            // Try multiple geocoding queries in order and return first successful coordinates
+            function fetchCoordsVariations(queries){
+                function attempt(q){
+                    // First try: prefer Poland results and Polish language to disambiguate
+                    var url1 = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=pl&accept-language=pl&q=' + encodeURIComponent(q);
+                    var url2 = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' + encodeURIComponent(q);
+                    return fetch(url1, { headers: { 'Accept': 'application/json' } })
+                        .then(function(r){ if(!r.ok) throw new Error('geocode failed'); return r.json(); })
+                        .then(function(js){ if(js && js.length){ return { lat: parseFloat(js[0].lat), lon: parseFloat(js[0].lon) }; } return null; })
+                        .catch(function(){ return null; })
+                        .then(function(res){
+                            if(res) return res;
+                            // fallback: try without country restriction
+                            return fetch(url2, { headers: { 'Accept': 'application/json' } })
+                                .then(function(r2){ if(!r2.ok) throw new Error('geocode failed'); return r2.json(); })
+                                .then(function(js2){ if(js2 && js2.length){ return { lat: parseFloat(js2[0].lat), lon: parseFloat(js2[0].lon) }; } return null; })
+                                .catch(function(){ return null; });
+                        });
+                }
+                // try sequentially to avoid flooding the service with parallel requests
+                return queries.reduce(function(promise, q){
+                    return promise.then(function(res){
+                        if(res) return Promise.resolve(res);
+                        if(!q) return Promise.resolve(null);
+                        return attempt(q);
+                    });
+                }, Promise.resolve(null));
             }
 
             function buildQueryFromModel(prefix){
@@ -138,19 +163,124 @@
             }
 
             function initMapWithCoords(sLat, sLng, eLat, eLng){
-                var map = L.map('rideDetailsMap').setView([ (sLat+eLat)/2, (sLng+eLng)/2 ], 8);
+                var centerLat = (sLat + eLat) / 2;
+                var centerLng = (sLng + eLng) / 2;
+                var map = L.map('rideDetailsMap').setView([ centerLat, centerLng ], 8);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 }).addTo(map);
 
-                var startMarker = L.marker([sLat, sLng]).addTo(map).bindPopup('Start: ' + '@(Model.StartLocation?.Name ?? Model.StartLocation?.City ?? "Start")');
-                var endMarker = L.marker([eLat, eLng]).addTo(map).bindPopup('Cel: ' + '@(Model.EndLocation?.Name ?? Model.EndLocation?.City ?? "Cel")');
+                // create markers but don't add to map yet - routing control will place markers; we will add as fallback if needed
+                var startMarker = L.marker([sLat, sLng]).bindPopup('Start: ' + '@(Model.StartLocation?.Name ?? Model.StartLocation?.City ?? "Start")');
+                var endMarker = L.marker([eLat, eLng]).bindPopup('Cel: ' + '@(Model.EndLocation?.Name ?? Model.EndLocation?.City ?? "Cel")');
 
-                var bounds = L.latLngBounds([ [sLat, sLng], [eLat, eLng] ]);
-                map.fitBounds(bounds.pad(0.2));
+                console.log('initMapWithCoords coords:', {sLat:sLat, sLng:sLng, eLat:eLat, eLng:eLng});
+                // Try to render a routed path using OSRM via leaflet-routing-machine. If routing fails, fallback to straight polyline.
+                try {
+                    // ensure popups show updated labels if reverse-geocode filled them
+                    try {
+                        if(window.__startDisplayName){ startMarker.bindPopup(window.__startDisplayName); }
+                        if(window.__endDisplayName){ endMarker.bindPopup(window.__endDisplayName); }
+                    } catch(e) { /* ignore */ }
+                    var control = L.Routing.control({
+                        waypoints: [ L.latLng(sLat, sLng), L.latLng(eLat, eLng) ],
+                        router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
+                        fitSelectedRoute: true,
+                        show: false,
+                        addWaypoints: false,
+                        draggableWaypoints: false,
+                        createMarker: function(i, wp, nWps) {
+                            // create simple markers for routing control; do not re-add our pre-created markers here
+                            var m = L.marker(wp.latLng);
+                            if(i === 0) m.bindPopup(startMarker.getPopup().getContent());
+                            if(i === 1) m.bindPopup(endMarker.getPopup().getContent());
+                            return m;
+                        }
+                    }).addTo(map);
 
-                L.polyline([[sLat, sLng], [eLat, eLng]], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
+                    control.on('routesfound', function(e){
+                        // ensure bounds fit
+                        var r = e.routes && e.routes[0];
+                        if(r && r.bounds){ map.fitBounds(r.bounds.pad(0.15)); }
+                        // ensure our fallback markers are visible in case control didn't add them
+                        try{ if(!map.hasLayer(startMarker)) startMarker.addTo(map); }catch(_){}
+                        try{ if(!map.hasLayer(endMarker)) endMarker.addTo(map); }catch(_){}
+                    });
+                    control.on('routingerror', function(err){
+                        // routing failed - fallback to straight polyline and ensure markers are added
+                        var bounds = L.latLngBounds([ [sLat, sLng], [eLat, eLng] ]);
+                        map.fitBounds(bounds.pad(0.2));
+                        L.polyline([[sLat, sLng], [eLat, eLng]], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
+                        try{ if(!map.hasLayer(startMarker)) startMarker.addTo(map); }catch(_){}
+                        try{ if(!map.hasLayer(endMarker)) endMarker.addTo(map); }catch(_){}
+                    });
+                } catch(err){
+                    // fallback: draw straight polyline and add markers
+                    var bounds = L.latLngBounds([ [sLat, sLng], [eLat, eLng] ]);
+                    map.fitBounds(bounds.pad(0.2));
+                    L.polyline([[sLat, sLng], [eLat, eLng]], {color: 'blue', weight: 3, opacity: 0.6}).addTo(map);
+                    try{ if(!map.hasLayer(startMarker)) startMarker.addTo(map); }catch(_){}
+                    try{ if(!map.hasLayer(endMarker)) endMarker.addTo(map); }catch(_){}
+                }
+            }
+
+            // Reverse geocode a point and update page labels and marker popup
+            function reverseGeocodeAndUpdate(lat, lon, which){
+                var url1 = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon) + '&accept-language=pl&countrycodes=pl';
+                var url2 = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon);
+                return fetch(url1, { headers: { 'Accept': 'application/json' } })
+                    .then(function(res){ if(!res.ok) throw new Error('reverse failed'); return res.json(); })
+                    .then(function(data){
+                        var address = data && data.address ? data.address : {};
+                        var city = address.city || address.town || address.village || address.county || data.name || '';
+                        var road = address.road || '';
+                        var house = address.house_number || '';
+                        var postcode = address.postcode || '';
+                        var addrParts = [];
+                        if(road) addrParts.push(road);
+                        if(house) addrParts.push(house);
+                        if(postcode) addrParts.push(postcode);
+                        var addressStr = addrParts.join(' ');
+
+                        if(which === 'start'){
+                            try{ document.getElementById('startCityLabel').textContent = city || 'Nieznane'; }catch(e){}
+                            try{ document.getElementById('startAddressLabel').textContent = addressStr || (data.display_name || ''); }catch(e){}
+                            window.__startDisplayName = 'Start: ' + (data.name || city || 'Start');
+                        } else {
+                            try{ document.getElementById('endCityLabel').textContent = city || 'Nieznane'; }catch(e){}
+                            try{ document.getElementById('endAddressLabel').textContent = addressStr || (data.display_name || ''); }catch(e){}
+                            window.__endDisplayName = 'Cel: ' + (data.name || city || 'Cel');
+                        }
+                        return data;
+                    }).catch(function(){
+                        // fallback without country restriction
+                        return fetch(url2, { headers: { 'Accept': 'application/json' } })
+                            .then(function(res2){ if(!res2.ok) throw new Error('reverse failed'); return res2.json(); })
+                            .then(function(data2){
+                                var address2 = data2 && data2.address ? data2.address : {};
+                                // update DOM using data2
+                                var city2 = address2.city || address2.town || address2.village || address2.county || data2.name || '';
+                                var road2 = address2.road || '';
+                                var house2 = address2.house_number || '';
+                                var postcode2 = address2.postcode || '';
+                                var addrParts2 = [];
+                                if(road2) addrParts2.push(road2);
+                                if(house2) addrParts2.push(house2);
+                                if(postcode2) addrParts2.push(postcode2);
+                                var addressStr2 = addrParts2.join(' ');
+                                if(which === 'start'){
+                                    try{ document.getElementById('startCityLabel').textContent = city2 || 'Nieznane'; }catch(e){}
+                                    try{ document.getElementById('startAddressLabel').textContent = addressStr2 || (data2.display_name || ''); }catch(e){}
+                                    window.__startDisplayName = 'Start: ' + (data2.name || city2 || 'Start');
+                                } else {
+                                    try{ document.getElementById('endCityLabel').textContent = city2 || 'Nieznane'; }catch(e){}
+                                    try{ document.getElementById('endAddressLabel').textContent = addressStr2 || (data2.display_name || ''); }catch(e){}
+                                    window.__endDisplayName = 'Cel: ' + (data2.name || city2 || 'Cel');
+                                }
+                                return data2;
+                            }).catch(function(err2){ console.warn('Reverse geocode failed for', which, err2); return null; });
+                    });
             }
 
             (function ensureAndInit(){
@@ -161,30 +291,70 @@
 
                 var promises = [];
                 if(sLat == null || sLng == null){
-                    var q = buildQueryFromModel('start');
-                    if(q) promises.push(fetchCoords(q).then(function(res){ if(res){ sLat = res.lat; sLng = res.lon; } }));
+                    var name = '@(Model.StartLocation?.Name ?? "")'.trim();
+                    var addr = '@(Model.StartLocation?.Address ?? "")'.trim();
+                    var city = '@(Model.StartLocation?.City ?? "")'.trim();
+                    // try variations and include postal code or country hint to disambiguate
+                    function extractPostal(s){ var m = s.match(/\b\d{2}-\d{3}\b/); return m ? m[0] : null; }
+                    var startPostal = extractPostal(addr) || extractPostal(name) || extractPostal(city);
+                    var base1 = [name, addr, city].filter(Boolean).join(' ');
+                    var base2 = [addr, city].filter(Boolean).join(' ');
+                    var startQueries = [ base1, base2, city, name ].filter(Boolean);
+                    if(startPostal){ startQueries = [ base1 + ' ' + startPostal, base2 + ' ' + startPostal ].concat(startQueries); }
+                    // add country hint
+                    startQueries = startQueries.map(function(q){ return q + ', Poland'; });
+                    if(startQueries.length) promises.push(fetchCoordsVariations(startQueries).then(function(res){ if(res){ sLat = res.lat; sLng = res.lon; } }));
                 }
                 if(eLat == null || eLng == null){
-                    var q2 = buildQueryFromModel('end');
-                    if(q2) promises.push(fetchCoords(q2).then(function(res){ if(res){ eLat = res.lat; eLng = res.lon; } }));
+                    var name2 = '@(Model.EndLocation?.Name ?? "")'.trim();
+                    var addr2 = '@(Model.EndLocation?.Address ?? "")'.trim();
+                    var city2 = '@(Model.EndLocation?.City ?? "")'.trim();
+                    var endPostal = extractPostal(addr2) || extractPostal(name2) || extractPostal(city2);
+                    var baseE1 = [name2, addr2, city2].filter(Boolean).join(' ');
+                    var baseE2 = [addr2, city2].filter(Boolean).join(' ');
+                    var endQueries = [ baseE1, baseE2, city2, name2 ].filter(Boolean);
+                    if(endPostal){ endQueries = [ baseE1 + ' ' + endPostal, baseE2 + ' ' + endPostal ].concat(endQueries); }
+                    endQueries = endQueries.map(function(q){ return q + ', Poland'; });
+                    if(endQueries.length) promises.push(fetchCoordsVariations(endQueries).then(function(res){ if(res){ eLat = res.lat; eLng = res.lon; } }));
                 }
 
                 Promise.all(promises).then(function(){
-                    if(sLat != null && sLng != null && eLat != null && eLng != null){
-                        initMapWithCoords(sLat, sLng, eLat, eLng);
-                    } else {
-                        // if we have only one point, center map on that
-                        if(sLat != null && sLng != null){
-                            var map = L.map('rideDetailsMap').setView([sLat, sLng], 12);
-                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-                            L.marker([sLat, sLng]).addTo(map).bindPopup('Start').openPopup();
-                        } else if(eLat != null && eLng != null){
-                            var map = L.map('rideDetailsMap').setView([eLat, eLng], 12);
-                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-                            L.marker([eLat, eLng]).addTo(map).bindPopup('Cel').openPopup();
+                    try {
+                        if(sLat != null && sLng != null && eLat != null && eLng != null){
+                            // if city/address labels are empty on server side, try reverse geocoding to fill them
+                            var startLabelEmpty = '@(string.IsNullOrEmpty(Model.StartLocation?.City ?? "" ) ? "1" : "0")' === '1';
+                            var endLabelEmpty = '@(string.IsNullOrEmpty(Model.EndLocation?.City ?? "" ) ? "1" : "0")' === '1';
+                            var reversePromises = [];
+                            if(startLabelEmpty) reversePromises.push(reverseGeocodeAndUpdate(sLat, sLng, 'start'));
+                            if(endLabelEmpty) reversePromises.push(reverseGeocodeAndUpdate(eLat, eLng, 'end'));
+                            Promise.all(reversePromises).then(function(){ initMapWithCoords(sLat, sLng, eLat, eLng); });
+                        } else {
+                            // if we have only one point, center map on that
+                            if(sLat != null && sLng != null){
+                                var map = L.map('rideDetailsMap').setView([sLat, sLng], 12);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+                                L.marker([sLat, sLng]).addTo(map).bindPopup('Start').openPopup();
+                            } else if(eLat != null && eLng != null){
+                                var map = L.map('rideDetailsMap').setView([eLat, eLng], 12);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+                                L.marker([eLat, eLng]).addTo(map).bindPopup('Cel').openPopup();
+                            } else {
+                                // nothing to show
+                                console.warn('No coordinates available for start or end');
+                                // create a default map view so container is initialized
+                                var map = L.map('rideDetailsMap').setView([52.0, 19.0], 6);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+                            }
                         }
+                    } catch (ex) {
+                        console.error('Map initialization failed:', ex);
+                        // fallback simple map so UI is usable
+                        try {
+                            var map = L.map('rideDetailsMap').setView([52.0, 19.0], 6);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+                        } catch(e) { console.error('Fallback map failed:', e); }
                     }
-                }).catch(function(){ /* ignore */ });
+                }).catch(function(err){ console.error('Geocoding promises failed:', err); });
             })();
         })();
     </script>
@@ -472,7 +642,8 @@
                                         <select name="seats" class="form-select">
                                             @for (int i = 1; i <= seatsAvailable && i <= 4; i++)
                                             {
-                                                <option value="@i">@i osoba@(i > 1 ? "y" : "")</option>
+                                                var label = i == 1 ? "osoba" : (i >= 2 && i <= 4 ? "osoby" : "osób");
+                                                <option value="@i">@i @label</option>
                                             }
                                         </select>
                                     </div>

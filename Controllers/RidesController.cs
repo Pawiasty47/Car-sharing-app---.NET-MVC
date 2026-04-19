@@ -223,6 +223,76 @@ namespace projekt_zespołowy.Controllers
 
             if (ride == null) return NotFound();
 
+            // If start/end locations lack human-readable city/address, try server-side reverse geocoding
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                http.DefaultRequestHeaders.Add("User-Agent", "projekt_zespolowy/1.0 (student@example.com)");
+
+                if (ride.StartLocation != null && string.IsNullOrWhiteSpace(ride.StartLocation.City)
+                    && ride.StartLocation.Latitude != 0 && ride.StartLocation.Longtitude != 0)
+                {
+                    try
+                    {
+                        var url = $"https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat={ride.StartLocation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lon={ride.StartLocation.Longtitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&accept-language=pl";
+                        var resp = await http.GetStringAsync(url);
+                        using var doc = System.Text.Json.JsonDocument.Parse(resp);
+                        if (doc.RootElement.TryGetProperty("address", out var addr))
+                        {
+                            string city = null;
+                            if (addr.TryGetProperty("city", out var v)) city = v.GetString();
+                            else if (addr.TryGetProperty("town", out v)) city = v.GetString();
+                            else if (addr.TryGetProperty("village", out v)) city = v.GetString();
+                            else if (addr.TryGetProperty("county", out v)) city = v.GetString();
+
+                            var road = addr.TryGetProperty("road", out var r1) ? r1.GetString() : null;
+                            var house = addr.TryGetProperty("house_number", out var r2) ? r2.GetString() : null;
+                            var postcode = addr.TryGetProperty("postcode", out var r3) ? r3.GetString() : null;
+
+                            if (!string.IsNullOrWhiteSpace(city)) ride.StartLocation.City = city;
+                            var parts = new System.Collections.Generic.List<string>();
+                            if (!string.IsNullOrWhiteSpace(road)) parts.Add(road);
+                            if (!string.IsNullOrWhiteSpace(house)) parts.Add(house);
+                            if (!string.IsNullOrWhiteSpace(postcode)) parts.Add(postcode);
+                            if (parts.Count > 0) ride.StartLocation.Address = string.Join(' ', parts);
+                        }
+                    }
+                    catch { /* ignore reverse geocode errors */ }
+                }
+
+                if (ride.EndLocation != null && string.IsNullOrWhiteSpace(ride.EndLocation.City)
+                    && ride.EndLocation.Latitude != 0 && ride.EndLocation.Longtitude != 0)
+                {
+                    try
+                    {
+                        var url = $"https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat={ride.EndLocation.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lon={ride.EndLocation.Longtitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&accept-language=pl";
+                        var resp = await http.GetStringAsync(url);
+                        using var doc = System.Text.Json.JsonDocument.Parse(resp);
+                        if (doc.RootElement.TryGetProperty("address", out var addr))
+                        {
+                            string city = null;
+                            if (addr.TryGetProperty("city", out var v)) city = v.GetString();
+                            else if (addr.TryGetProperty("town", out v)) city = v.GetString();
+                            else if (addr.TryGetProperty("village", out v)) city = v.GetString();
+                            else if (addr.TryGetProperty("county", out v)) city = v.GetString();
+
+                            var road = addr.TryGetProperty("road", out var r1) ? r1.GetString() : null;
+                            var house = addr.TryGetProperty("house_number", out var r2) ? r2.GetString() : null;
+                            var postcode = addr.TryGetProperty("postcode", out var r3) ? r3.GetString() : null;
+
+                            if (!string.IsNullOrWhiteSpace(city)) ride.EndLocation.City = city;
+                            var parts = new System.Collections.Generic.List<string>();
+                            if (!string.IsNullOrWhiteSpace(road)) parts.Add(road);
+                            if (!string.IsNullOrWhiteSpace(house)) parts.Add(house);
+                            if (!string.IsNullOrWhiteSpace(postcode)) parts.Add(postcode);
+                            if (parts.Count > 0) ride.EndLocation.Address = string.Join(' ', parts);
+                        }
+                    }
+                    catch { /* ignore reverse geocode errors */ }
+                }
+            }
+            catch { /* ignore http client setup errors */ }
+
             var bookings = await _context.Bookings
                 .Include(b => b.Passenger)
                 .Where(b => b.RideId == id)

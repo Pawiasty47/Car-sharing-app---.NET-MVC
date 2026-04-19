@@ -4,67 +4,6 @@
     ViewData["Title"] = "Dodaj nowy przejazd";
 }
 
-            // Geocode address typed by user (forward geocoding) and place marker
-            function geocodeAddress(prefix){
-                var nameEl = document.getElementById(prefix + '_Name');
-                var cityEl = document.getElementById(prefix + '_City');
-                var addrEl = document.getElementById(prefix + '_Address');
-                if(!nameEl && !cityEl && !addrEl) return;
-
-                var parts = [];
-                if(nameEl && nameEl.value.trim() !== '') parts.push(nameEl.value.trim());
-                if(addrEl && addrEl.value.trim() !== '') parts.push(addrEl.value.trim());
-                if(cityEl && cityEl.value.trim() !== '') parts.push(cityEl.value.trim());
-
-                var q = parts.join(' ');
-                if(!q) return;
-
-                var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q);
-                fetch(url, { headers: { 'Accept': 'application/json' } })
-                    .then(function(res){ if(!res.ok) throw new Error('geocode failed'); return res.json(); })
-                    .then(function(results){
-                        if(!results || !results.length) return;
-                        var r = results[0];
-                        var lat = parseFloat(r.lat);
-                        var lon = parseFloat(r.lon);
-                        if(isNaN(lat) || isNaN(lon)) return;
-
-                        // set marker via existing functions to reuse reverseGeocode/create logic
-                        if(prefix === 'StartLocation'){
-                            setPickup(L.latLng(lat, lon));
-                            map.setView([lat, lon], 12);
-                        } else {
-                            setDest(L.latLng(lat, lon));
-                            map.setView([lat, lon], 12);
-                        }
-                    })
-                    .catch(function(err){ console.warn('Forward geocode failed:', err); });
-            }
-
-            // simple debounce for input events
-            function debounce(fn, wait){
-                var t;
-                return function(){
-                    var args = arguments;
-                    clearTimeout(t);
-                    t = setTimeout(function(){ fn.apply(null, args); }, wait);
-                };
-            }
-
-            // Attach input listeners to address/name/city fields to trigger geocoding
-            function attachGeocodeListeners(prefix){
-                var nameEl = document.getElementById(prefix + '_Name');
-                var cityEl = document.getElementById(prefix + '_City');
-                var addrEl = document.getElementById(prefix + '_Address');
-                var handler = debounce(function(){ geocodeAddress(prefix); }, 700);
-                if(nameEl) nameEl.addEventListener('input', handler);
-                if(cityEl) cityEl.addEventListener('input', handler);
-                if(addrEl) addrEl.addEventListener('input', handler);
-            }
-
-            attachGeocodeListeners('StartLocation');
-            attachGeocodeListeners('EndLocation');
-
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
@@ -120,9 +59,32 @@
                                         <span asp-validation-for="StartLocation.Name" class="text-danger"></span>
                                     </div>
 
-                                    <input type="hidden" id="StartLat" name="StartLocation.Latitude" value="@(Model?.StartLocation != null && Model.StartLocation.Latitude != 0 ? Model.StartLocation.Latitude.ToString("F6") : String.Empty)" />
-                                    <input type="hidden" id="StartLocation_Id" name="StartLocation.Id" value="@(Model?.StartLocation != null && Model.StartLocation.Id != Guid.Empty ? Model.StartLocation.Id.ToString() : String.Empty)" />
-                                    <input type="hidden" id="StartLng" name="StartLocation.Longtitude" value="@(Model?.StartLocation != null && Model.StartLocation.Longtitude != 0 ? Model.StartLocation.Longtitude.ToString("F6") : String.Empty)" />
+                                    @if(Model?.StartLocation != null && Model.StartLocation.Latitude != 0)
+                                    {
+                                        <input type="hidden" id="StartLat" name="StartLocation.Latitude" value="@Model.StartLocation.Latitude.ToString("F6")" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="StartLat" value="" />
+                                    }
+
+                                    @if(Model?.StartLocation != null && Model.StartLocation.Id != Guid.Empty)
+                                    {
+                                        <input type="hidden" id="StartLocation_Id" name="StartLocation.Id" value="@Model.StartLocation.Id.ToString()" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="StartLocation_Id" value="" />
+                                    }
+
+                                    @if(Model?.StartLocation != null && Model.StartLocation.Longtitude != 0)
+                                    {
+                                        <input type="hidden" id="StartLng" name="StartLocation.Longtitude" value="@Model.StartLocation.Longtitude.ToString("F6")" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="StartLng" value="" />
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -150,9 +112,32 @@
                                         <span asp-validation-for="EndLocation.Name" class="text-danger"></span>
                                     </div>
 
-                                    <input type="hidden" id="EndLat" name="EndLocation.Latitude" value="@(Model?.EndLocation != null && Model.EndLocation.Latitude != 0 ? Model.EndLocation.Latitude.ToString("F6") : String.Empty)" />
-                                    <input type="hidden" id="EndLocation_Id" name="EndLocation.Id" value="@(Model?.EndLocation != null && Model.EndLocation.Id != Guid.Empty ? Model.EndLocation.Id.ToString() : String.Empty)" />
-                                    <input type="hidden" id="EndLng" name="EndLocation.Longtitude" value="@(Model?.EndLocation != null && Model.EndLocation.Longtitude != 0 ? Model.EndLocation.Longtitude.ToString("F6") : String.Empty)" />
+                                    @if(Model?.EndLocation != null && Model.EndLocation.Latitude != 0)
+                                    {
+                                        <input type="hidden" id="EndLat" name="EndLocation.Latitude" value="@Model.EndLocation.Latitude.ToString("F6")" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="EndLat" value="" />
+                                    }
+
+                                    @if(Model?.EndLocation != null && Model.EndLocation.Id != Guid.Empty)
+                                    {
+                                        <input type="hidden" id="EndLocation_Id" name="EndLocation.Id" value="@Model.EndLocation.Id.ToString()" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="EndLocation_Id" value="" />
+                                    }
+
+                                    @if(Model?.EndLocation != null && Model.EndLocation.Longtitude != 0)
+                                    {
+                                        <input type="hidden" id="EndLng" name="EndLocation.Longtitude" value="@Model.EndLocation.Longtitude.ToString("F6")" />
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" id="EndLng" value="" />
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -271,8 +256,21 @@
             }
 
             function setPickup(latlng){
-                if(pickupMarker) pickupMarker.setLatLng(latlng);
-                else pickupMarker = L.marker(latlng).addTo(map).bindPopup('Punkt startu');
+                if(pickupMarker){
+                    pickupMarker.setLatLng(latlng);
+                } else {
+                    pickupMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup('Punkt startu');
+                    // update inputs when marker dragged
+                    pickupMarker.on('dragend', function(e){
+                        var nl = e.target.getLatLng();
+                        startInputLat.value = nl.lat.toFixed(6);
+                        startInputLng.value = nl.lng.toFixed(6);
+                        // mark to create on submit
+                        var idEl = document.getElementById('StartLocation_Id'); if(idEl) idEl.dataset.needsCreate = '1';
+                        reverseGeocode(nl, 'StartLocation');
+                        updateLabels();
+                    });
+                }
                 startInputLat.value = latlng.lat.toFixed(6);
                 startInputLng.value = latlng.lng.toFixed(6);
                 // reverse-geocode to fill city/address/name inputs
@@ -281,8 +279,19 @@
             }
 
             function setDest(latlng){
-                if(destMarker) destMarker.setLatLng(latlng);
-                else destMarker = L.marker(latlng).addTo(map).bindPopup('Punkt docelowy');
+                if(destMarker){
+                    destMarker.setLatLng(latlng);
+                } else {
+                    destMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup('Punkt docelowy');
+                    destMarker.on('dragend', function(e){
+                        var nl = e.target.getLatLng();
+                        endInputLat.value = nl.lat.toFixed(6);
+                        endInputLng.value = nl.lng.toFixed(6);
+                        var idEl = document.getElementById('EndLocation_Id'); if(idEl) idEl.dataset.needsCreate = '1';
+                        reverseGeocode(nl, 'EndLocation');
+                        updateLabels();
+                    });
+                }
                 endInputLat.value = latlng.lat.toFixed(6);
                 endInputLng.value = latlng.lng.toFixed(6);
                 reverseGeocode(latlng, 'EndLocation');
@@ -328,26 +337,14 @@
                             addrEl.value = addressStr || (data && data.display_name) || (latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6));
                         }
 
-                        // Send to server to create LocationPoint and store returned id
+                        // Mark that this location needs to be persisted when the user submits the form
+                        // Avoid creating a database record on every reverse geocode call (Nominatim may be called often)
                         try {
-                            var payload = {
-                                Name: nameEl ? nameEl.value : '',
-                                City: cityEl ? cityEl.value : '',
-                                Address: addrEl ? addrEl.value : '',
-                                Latitude: latlng.lat,
-                                Longtitude: latlng.lng
-                            };
-                            fetch('/Rides/CreateLocationPoint', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            }).then(function(res){ return res.json(); })
-                              .then(function(json){
-                                  if(json && json.id){
-                                      var idEl = document.getElementById(prefix + '_Id');
-                                      if(idEl) idEl.value = json.id;
-                                  }
-                              }).catch(function(){ /* ignore */ });
+                            var idEl = document.getElementById(prefix + '_Id');
+                            if(idEl && (!idEl.value || idEl.value.trim() === '')){
+                                // store a flag on the element so we can create it once on submit
+                                idEl.dataset.needsCreate = '1';
+                            }
                         } catch(e) { /* ignore */ }
                     })
                     .catch(function(err){
@@ -428,6 +425,41 @@
             }
 
             if(form){
+                // helper: create LocationPoint on server for elements marked as needsCreate
+                function createLocationPoint(prefix){
+                    return new Promise(function(resolve){
+                        try{
+                            var idEl = document.getElementById(prefix + '_Id');
+                            var nameEl = document.getElementById(prefix + '_Name');
+                            var cityEl = document.getElementById(prefix + '_City');
+                            var addrEl = document.getElementById(prefix + '_Address');
+                            var latEl = document.getElementById(prefix + 'Lat');
+                            var lngEl = document.getElementById(prefix + 'Lng');
+                            if(!idEl || !(idEl.dataset && idEl.dataset.needsCreate)) return resolve(null);
+                            var payload = {
+                                Name: nameEl ? nameEl.value : '',
+                                City: cityEl ? cityEl.value : '',
+                                Address: addrEl ? addrEl.value : '',
+                                Latitude: latEl ? parseFloat(latEl.value) : null,
+                                Longtitude: lngEl ? parseFloat(lngEl.value) : null
+                            };
+                            fetch('/Rides/CreateLocationPoint', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            }).then(function(res){ return res.json(); })
+                              .then(function(json){
+                                  if(json && json.id){
+                                      idEl.value = json.id;
+                                      delete idEl.dataset.needsCreate;
+                                      return resolve(json.id);
+                                  }
+                                  return resolve(null);
+                              }).catch(function(){ return resolve(null); });
+                        }catch(e){ return resolve(null); }
+                    });
+                }
+
                 form.addEventListener('submit', function(e){
                     // ensure both start and end are filled
                     var startOk = isLocationFilled('StartLocation');
@@ -435,11 +467,29 @@
                     if(!startOk || !endOk){
                         e.preventDefault();
                         e.stopPropagation();
-                        // show user-friendly message
                         var msg = 'Proszę ustawić oba punkty na mapie i upewnić się, że pola Nazwa/Miasto/Adres są wypełnione.';
                         alert(msg);
                         return false;
                     }
+
+                    // If any location is marked as needing creation, create them first, then submit
+                    var startIdEl = document.getElementById('StartLocation_Id');
+                    var endIdEl = document.getElementById('EndLocation_Id');
+                    var needsStartCreate = startIdEl && startIdEl.dataset && startIdEl.dataset.needsCreate;
+                    var needsEndCreate = endIdEl && endIdEl.dataset && endIdEl.dataset.needsCreate;
+
+                    if(needsStartCreate || needsEndCreate){
+                        e.preventDefault();
+                        Promise.all([
+                            needsStartCreate ? createLocationPoint('StartLocation') : Promise.resolve(null),
+                            needsEndCreate ? createLocationPoint('EndLocation') : Promise.resolve(null)
+                        ]).then(function(){
+                            // submit the form after ids have been set (or attempted)
+                            form.submit();
+                        });
+                        return false;
+                    }
+
                     return true;
                 });
             }

@@ -3,6 +3,12 @@
     ViewData["Title"] = "Rejestracja";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css" />
+<style>
+    .iti { width: 100%; display: block; }
+    .iti__flag {background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/img/flags.png");}
+</style>
+
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card shadow-sm border-0">
@@ -45,8 +51,8 @@
 
                         <div class="col-md-6">
                             <label asp-for="PhoneNumber" class="form-label fw-bold">Numer telefonu</label>
-                            <input asp-for="PhoneNumber" class="form-control" placeholder="np. 600123456" />
-                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                            <input type="tel" id="phone-input" asp-for="PhoneNumber" class="form-control" placeholder="Wpisz numer telefonu" />
+                            <span id="phone-error" class="text-danger small" style="display: none;"></span>
                         </div>
 
                         <div class="col-md-6">
@@ -82,4 +88,44 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const phoneInputField = document.querySelector("#phone-input");
+            const phoneError = document.querySelector("#phone-error");
+            const form = phoneInputField.closest("form");
+
+            const phoneInput = window.intlTelInput(phoneInputField, {
+                initialCountry: "pl",
+                preferredCountries: ["pl", "de", "gb", "us", "ua"],
+                utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
+            });
+
+            form.addEventListener("submit", function (e) {
+                if (phoneInputField.value.trim() !== "") {
+                    if (!phoneInput.isValidNumber()) {
+                        e.preventDefault();
+
+                        phoneInputField.classList.add("is-invalid");
+                        phoneError.style.display = "block";
+                        phoneError.innerHTML = "Wprowadzony numer telefonu jest niepoprawny dla wybranego kraju.";
+
+                        phoneInputField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return false;
+                    } else {
+                        phoneInputField.classList.remove("is-invalid");
+                        phoneError.style.display = "none";
+                        phoneInputField.value = phoneInput.getNumber();
+                    }
+                }
+            });
+
+            phoneInputField.addEventListener("input", function() {
+                phoneInputField.classList.remove("is-invalid");
+                phoneError.style.display = "none";
+            });
+        });
+    </script>
 }

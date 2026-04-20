@@ -354,8 +354,7 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // --- Create (POST) - POPRAWIONE ---
-        // --- Create (POST) - POPRAWIONE ---
+
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -367,6 +366,7 @@ namespace projekt_zespołowy.Controllers
             ModelState.Remove("StartLocation.Longtitude");
             ModelState.Remove("EndLocation.Latitude");
             ModelState.Remove("EndLocation.Longtitude");
+
 
             // Walidacja dat
             if (model.DepartureTime < DateTime.Now)
@@ -571,7 +571,6 @@ namespace projekt_zespołowy.Controllers
             return View(model);
         }
 
-        // Edit (POST)
         // Edit (POST)
         [Authorize]
         [HttpPost]
@@ -825,8 +824,6 @@ namespace projekt_zespołowy.Controllers
             return View(ride);
         }
 
-
-
         // Delete (POST)
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
@@ -864,7 +861,7 @@ namespace projekt_zespołowy.Controllers
         {
             var ride = await _context.OfferedRides
                 .Include(r => r.Bookings)
-                .Include(r => r.StartLocation) 
+                .Include(r => r.StartLocation)
                 .Include(r => r.EndLocation)
                 .FirstOrDefaultAsync(r => r.Id == id);
 

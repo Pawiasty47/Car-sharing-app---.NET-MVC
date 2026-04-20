@@ -65,6 +65,7 @@ namespace projekt_zespołowy.Models.ViewModels
         [Display(Name = "Elastyczna cena (możliwość negocjacji)")]
         public bool IsFlexiblePrice { get; set; } = false;
 
+        [Required(ErrorMessage = "Uwagi dla pasażerów są obowiązkowe (wpisz np. 'Brak uwag').")]
         [Display(Name = "Dodatkowe uwagi dla pasażerów")]
         [MaxLength(500)]
         public string? Notes { get; set; }

@@ -4,77 +4,129 @@
     ViewData["Title"] = "Moje rezerwacje";
 }
 
-<div class="container mt-4">
-    <h2>Moje rezerwacje</h2>
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
-    }
+<div class="row justify-content-center">
+    <div class="col-lg-10">
 
-    @if (!Model.Any())
-    {
-        <div class="alert alert-info">
-            Nie masz jeszcze żadnych rezerwacji.
-            <a asp-controller="Rides" asp-action="Index" class="alert-link">Znajdź przejazd</a>.
-        </div>
-    }
-    else
-    {
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">
+                    <i class="bi bi-ticket-perforated me-2"></i>
+                    Moje rezerwacje
+                </h3>
+            </div>
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Trasa</th>
-                        <th>Data wyjazdu</th>
-                        <th>Kierowca</th>
-                        <th>Status rezerwacji</th>
-                        <th>Akcja</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model)
-                    {
-                        <tr>
-                            <td>
-                                @* Dostęp do danych przejazdu poprzez nawigację .Ride *@
-                                <strong>@item.Ride.StartLocation.City</strong>
-                                <i class="bi bi-arrow-right mx-1"></i>
-                                <strong>@item.Ride.EndLocation.City</strong>
-                            </td>
-                            <td>
-                                @item.Ride.DepartureTime.ToString("dd.MM.yyyy HH:mm")
-                            </td>
-                            <td>
-                                @item.Ride.Driver.User.FirstName @item.Ride.Driver.User.LastName
-                            </td>
-                            <td>
-                                @if (item.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
-                                {
-                                    <span class="badge bg-success">Zatwierdzona</span>
-                                }
-                                else if (item.Status == projekt_zespołowy.Models.BookingStatus.Pending)
-                                {
-                                    <span class="badge bg-warning text-dark">Oczekująca</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">@item.Status</span>
-                                }
-                            </td>
-                            <td>
-                                @* Ten przycisk przeniesie Cię do widoku Summary, gdzie można ocenić kierowcę *@
-                                <a asp-controller="Rides"
-                                   asp-action="Summary"
-                                   asp-route-id="@item.RideId"
-                                   class="btn btn-primary btn-sm">
-                                    Szczegóły / Oceń
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <div class="card-body p-4">
+
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success">
+                        @TempData["SuccessMessage"]
+                    </div>
+                }
+
+                @if (!Model.Any())
+                {
+                    <div class="alert alert-light text-center py-5">
+                        <i class="bi bi-emoji-frown fs-1 d-block mb-3"></i>
+                        Nie masz jeszcze żadnych rezerwacji.
+                        <div class="mt-3">
+                            <a asp-controller="Rides" asp-action="Index" class="btn btn-outline-primary">
+                                <i class="bi bi-search me-1"></i> Znajdź przejazd
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3">
+
+                        @foreach (var item in Model)
+                        {
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card shadow-sm border-0 h-100">
+
+                                    <div class="card-body d-flex flex-column justify-content-between">
+
+                                        <div>
+
+                                            <!-- TRASA -->
+                                            <h5 class="card-title text-primary mb-2">
+                                                <i class="bi bi-geo-alt-fill text-success me-1"></i>
+                                                @item.Ride.StartLocation.City
+                                                <i class="bi bi-arrow-right mx-1"></i>
+                                                @item.Ride.EndLocation.City
+                                            </h5>
+
+                                            <!-- DATA -->
+                                            <p class="text-muted small mb-1">
+                                                <i class="bi bi-clock me-1"></i>
+                                                @item.Ride.DepartureTime.ToString("dd.MM.yyyy HH:mm")
+                                            </p>
+
+                                            <!-- KIEROWCA -->
+                                            <p class="text-muted small mb-2">
+                                                <i class="bi bi-person me-1"></i>
+                                                @item.Ride.Driver.User.FirstName
+                                                @item.Ride.Driver.User.LastName
+                                            </p>
+
+                                            <!-- STATUS -->
+                                            <div>
+                                                @if (item.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
+                                                {
+                                                    <span class="badge bg-success">Zatwierdzona</span>
+                                                }
+                                                else if (item.Status == projekt_zespołowy.Models.BookingStatus.Pending)
+                                                {
+                                                    <span class="badge bg-warning text-dark">Oczekująca</span>
+                                                }
+                                                else if (item.Status == projekt_zespołowy.Models.BookingStatus.Cancelled)
+                                                {
+                                                    <span class="badge bg-danger">Anulowana</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">@item.Status</span>
+                                                }
+                                            </div>
+
+                                        </div>
+
+                                        <!-- AKCJE -->
+                                        <div class="mt-3 d-grid gap-2">
+
+                                            <a asp-controller="Rides"
+                                               asp-action="Summary"
+                                               asp-route-id="@item.RideId"
+                                               class="btn btn-primary btn-sm">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                Szczegóły
+                                            </a>
+
+                                            @if (item.Status == projekt_zespołowy.Models.BookingStatus.Confirmed)
+                                            {
+                                                <a asp-controller="Chat"
+                                                   asp-action="RideChat"
+                                                   asp-route-rideId="@item.RideId"
+                                                   class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-chat-dots me-1"></i>
+                                                    Przejdź do czatu
+                                                </a>
+                                            }
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        }
+
+                    </div>
+                }
+
+            </div>
         </div>
-    }
+
+    </div>
 </div>

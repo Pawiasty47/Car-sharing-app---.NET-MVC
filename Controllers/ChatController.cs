@@ -72,13 +72,13 @@ public class ChatController : Controller
 
         return RedirectToAction("RideChat", new { rideId = chat.RideId });
     }
-    public async Task<IActionResult> ChatList()
+    public async Task<IActionResult> ChatList(string filter = "all")
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null) return NotFound("Nie jesteś zalogowany.");
 
-        // Pobieramy czaty, w których użytkownik jest kierowcą lub pasażerem
-        var chats = await _context.Chats
+        // Pobieramy czaty
+        var query = _context.Chats
             .Include(c => c.Ride)
                 .ThenInclude(r => r.StartLocation)
             .Include(c => c.Ride)
@@ -87,10 +87,33 @@ public class ChatController : Controller
                 .ThenInclude(r => r.Driver)
                     .ThenInclude(d => d.User)
             .Include(c => c.Messages)
-            .Where(c =>
+            .AsQueryable();
+
+        // 🔍 FILTRACJA (TYLKO TO DODANE)
+        if (filter == "driver")
+        {
+            query = query.Where(c => c.Ride.Driver.UserId == user.Id);
+        }
+        else if (filter == "passenger")
+        {
+            query = query.Where(c =>
+                c.Ride.Bookings.Any(b =>
+                    b.PassengerUserId == user.Id &&
+                    b.Status != BookingStatus.Cancelled));
+        }
+        else // "all"
+        {
+            query = query.Where(c =>
                 c.Ride.Driver.UserId == user.Id ||
-                c.Ride.Bookings.Any(b => b.PassengerUserId == user.Id && b.Status != BookingStatus.Cancelled))
-            .OrderByDescending(c => c.Messages.Max(m => m.CreatedAt))
+                c.Ride.Bookings.Any(b =>
+                    b.PassengerUserId == user.Id &&
+                    b.Status != BookingStatus.Cancelled));
+        }
+
+        var chats = await query
+            .OrderByDescending(c => c.Messages.Any()
+                ? c.Messages.Max(m => m.CreatedAt)
+                : DateTime.MinValue)
             .ToListAsync();
 
         return View(chats);

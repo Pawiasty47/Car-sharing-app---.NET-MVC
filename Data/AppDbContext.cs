@@ -29,6 +29,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<ChatParticipant> ChatParticipants { get; set; }
 
     public DbSet<RideSubscription> RideSubscriptions { get; set; }
+    public DbSet<Transaction> Transactions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -148,6 +149,12 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .HasOne(rs => rs.User)
             .WithMany()
             .HasForeignKey(rs => rs.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        model.Entity<Transaction>()
+            .HasOne(t => t.User)
+            .WithMany()
+            .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
     }

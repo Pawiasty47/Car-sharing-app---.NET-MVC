@@ -79,6 +79,14 @@ namespace projekt_zespołowy.Controllers
             ViewBag.TotalEarnings = completedRides
                 .Sum(r => r.PricePerSeat * r.Bookings.Count);
 
+            // Historia transakcji dla kierowcy
+            var transactions = await _context.Transactions
+                .Where(t => t.UserId == profile.UserId)
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(50)
+                .ToListAsync();
+            ViewBag.Transactions = transactions;
+
             return View(profile);
         }
 

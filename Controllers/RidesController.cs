@@ -822,6 +822,38 @@ namespace projekt_zespołowy.Controllers
                             };
                             _context.Payments.Add(payment);
 
+                                // Zapis transakcji - przychód dla kierowcy
+                                if (driverUser != null)
+                                {
+                                    _context.Transactions.Add(new projekt_zespołowy.Models.Transaction
+                                    {
+                                        UserId = driverUser.Id,
+                                        Amount = b.FrozenAmount,
+                                        Type = projekt_zespołowy.Models.TransactionType.Earned,
+                                        Description = $"Wypłata za rezerwację #{b.Id} (przejazd {ride.StartLocation?.City}→{ride.EndLocation?.City})",
+                                        CreatedAt = DateTime.UtcNow
+                                    });
+                                }
+
+                                // Powiadomienie dla kierowcy o wpływie środków
+                                try
+                                {
+                                    var driverNotification = new Notification
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        UserId = ride.DriverId,
+                                        Title = "Wpłynęła wypłata",
+                                        Body = $"Na Twoje konto wpłynęło {b.FrozenAmount:C2} za rezerwację #{b.Id}.",
+                                        CreatedAt = DateTime.UtcNow,
+                                        IsRead = false
+                                    };
+                                    _context.Notifications.Add(driverNotification);
+                                }
+                                catch
+                                {
+                                    // ignoruj błędy powiadomień
+                                }
+
                             b.PaymentStatus = PaymentStatus.Paid;
 
                             b.FrozenAmount = 0;

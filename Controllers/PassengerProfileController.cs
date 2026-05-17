@@ -80,6 +80,14 @@ namespace projekt_zespołowy.Controllers
                 DriverRating = driverProfile?.Rating
             };
 
+            // Historia transakcji
+            var transactions = await _context.Transactions
+                .Where(t => t.UserId == user.Id)
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(50)
+                .ToListAsync();
+            ViewBag.Transactions = transactions;
+
             return View(model);
         }
 
@@ -169,6 +177,16 @@ namespace projekt_zespołowy.Controllers
 
             var user = await _userManager.GetUserAsync(User);
             user.Balance += amount;
+            await _userManager.UpdateAsync(user);
+
+            _context.Transactions.Add(new projekt_zespołowy.Models.Transaction
+            {
+                UserId = user.Id,
+                Amount = amount,
+                Type = projekt_zespołowy.Models.TransactionType.Deposit,
+                Description = "Wpłata środków przez użytkownika",
+                CreatedAt = DateTime.UtcNow
+            });
 
             await _context.SaveChangesAsync();
             return RedirectToAction("Index");
@@ -183,8 +201,39 @@ namespace projekt_zespołowy.Controllers
                 return RedirectToAction("Index");
 
             user.Balance -= amount;
+            await _userManager.UpdateAsync(user);
+
+            _context.Transactions.Add(new projekt_zespołowy.Models.Transaction
+            {
+                UserId = user.Id,
+                Amount = amount,
+                Type = projekt_zespołowy.Models.TransactionType.Withdrawal,
+                Description = "Wypłata środków przez użytkownika",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            // Dodaj powiadomienie o wypłacie
+            try
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    Title = "Wypłata środków",
+                    Body = $"Z Twojego konta wypłacono {amount:C2}. Środki zostaną przetworzone.",
+                    CreatedAt = DateTime.UtcNow,
+                    IsRead = false
+                };
+                _context.Notifications.Add(notification);
+            }
+            catch
+            {
+                // ignoruj błędy powiadomień
+            }
 
             await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"Wypłacono {amount:C2} z Twojego konta.";
             return RedirectToAction("Index");
         }
 

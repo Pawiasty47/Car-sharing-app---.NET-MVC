@@ -73,6 +73,16 @@ namespace projekt_zespołowy.Controllers
                     user.Balance -= totalToFreeze;
                     await _userManager.UpdateAsync(user);
 
+                    // Zapis transakcji - wydatek (zamrożone środki)
+                    _context.Transactions.Add(new projekt_zespołowy.Models.Transaction
+                    {
+                        UserId = user.Id,
+                        Amount = totalToFreeze,
+                        Type = projekt_zespołowy.Models.TransactionType.Spent,
+                        Description = $"Rezerwacja przejazdu #{rideId}",
+                        CreatedAt = DateTime.UtcNow
+                    });
+
                     var booking = new Booking
                     {
                         RideId = rideId,
@@ -159,6 +169,16 @@ namespace projekt_zespołowy.Controllers
                     {
                         booking.Passenger.Balance += booking.FrozenAmount;
                         await _userManager.UpdateAsync(booking.Passenger);
+
+                        // Zapis transakcji - zwrot środków do pasażera
+                        _context.Transactions.Add(new projekt_zespołowy.Models.Transaction
+                        {
+                            UserId = booking.Passenger.Id,
+                            Amount = booking.FrozenAmount,
+                            Type = projekt_zespołowy.Models.TransactionType.Deposit,
+                            Description = $"Zwrot za odrzuconą rezerwację #{booking.Id}",
+                            CreatedAt = DateTime.UtcNow
+                        });
                     }
 
                     if (booking.Status == BookingStatus.Pending)
@@ -208,6 +228,16 @@ namespace projekt_zespołowy.Controllers
                     {
                         user.Balance += booking.FrozenAmount;
                         await _userManager.UpdateAsync(user);
+
+                        // Zapis transakcji - zwrot środków do pasażera
+                        _context.Transactions.Add(new projekt_zespołowy.Models.Transaction
+                        {
+                            UserId = user.Id,
+                            Amount = booking.FrozenAmount,
+                            Type = projekt_zespołowy.Models.TransactionType.Deposit,
+                            Description = $"Zwrot za anulowaną rezerwację #{booking.Id}",
+                            CreatedAt = DateTime.UtcNow
+                        });
                     }
 
                     if (booking.Status == BookingStatus.Confirmed || booking.Status == BookingStatus.Pending)

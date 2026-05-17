@@ -781,16 +781,69 @@ namespace projekt_zespołowy.Controllers
                 return RedirectToAction(nameof(Summary), new { id });
             }
 
-            ride.Status = RideStatus.Completed;
-            if (!ride.ArrivalTime.HasValue) ride.ArrivalTime = DateTime.Now;
-
-            var bookings = await _context.Bookings.Where(b => b.RideId == id).ToListAsync();
-            foreach (var b in bookings)
+            // Zakończenie przejazdu + rozliczenie z kierowcą.
+            using (var transaction = await _context.Database.BeginTransactionAsync())
             {
-                b.Status = BookingStatus.Completed;
-            }
+                try
+                {
+                    ride.Status = RideStatus.Completed;
+                    if (!ride.ArrivalTime.HasValue) ride.ArrivalTime = DateTime.Now;
 
-            await _context.SaveChangesAsync();
+                    var bookings = await _context.Bookings
+                        .Include(b => b.Passenger)
+                        .Where(b => b.RideId == id)
+                        .ToListAsync();
+
+                    // Pobierz konto kierowcy
+                    var driverUser = await _userManager.FindByIdAsync(ride.DriverId.ToString());
+                    var driverProfile = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.UserId == ride.DriverId);
+
+                    foreach (var b in bookings)
+                    {
+                        // Oznacz rezerwację jako zakończoną
+                        b.Status = BookingStatus.Completed;
+
+                        // Jeżeli były zamrożone środki, przekaż je kierowcy i utwórz wpis płatności
+                        if (b.FrozenAmount > 0)
+                        {
+                            if (driverUser != null)
+                            {
+                                driverUser.Balance += b.FrozenAmount;
+                                await _userManager.UpdateAsync(driverUser);
+                            }
+
+                            // Utwórz rekord płatności
+                            var payment = new Payment
+                            {
+                                BookingId = b.Id,
+                                Amount = b.FrozenAmount,
+                                Currency = "PLN",
+                                Status = PaymentStatus.Paid
+                            };
+                            _context.Payments.Add(payment);
+
+                            b.PaymentStatus = PaymentStatus.Paid;
+
+                            b.FrozenAmount = 0;
+                        }
+                    }
+
+                    // Zaktualizuj statystyki kierowcy
+                    if (driverProfile != null)
+                    {
+                        driverProfile.CompletedRidesCount += 1;
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    TempData["ErrorMessage"] = "Wystąpił błąd podczas rozliczania przejazdu. Spróbuj ponownie.";
+                    return RedirectToAction(nameof(Summary), new { id });
+                }
+            }
 
             TempData["SuccessMessage"] = "Przejazd zakończony.";
             return RedirectToAction(nameof(Summary), new { id });

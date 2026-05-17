@@ -119,64 +119,102 @@
                     <i class="bi bi-wallet2 me-2"></i> Mój Portfel
                 </h4>
 
-                <div class="row g-4">
+                <ul class="nav nav-tabs mb-3" id="walletTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="wallet-tab" data-bs-toggle="tab" data-bs-target="#wallet" type="button" role="tab" aria-controls="wallet" aria-selected="true">Portfel</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions" type="button" role="tab" aria-controls="transactions" aria-selected="false">Historia transakcji</button>
+                    </li>
+                </ul>
 
-                    <div class="col-md-5">
-                        <div class="card bg-light border-0 shadow-sm p-4 h-100
-                d-flex justify-content-center align-items-center text-center">
-                            <small class="text-muted text-uppercase fw-bold">Dostępne środki</small>
-                            <h2 class="display-6 fw-bold text-success mb-0">
-                                @Model.Balance.ToString("C2")
-                            </h2>
-                        </div>
-                    </div>
-
-
-                    <div class="col-md-7">
-                        <div class="card border-0 shadow-sm p-4 h-100">
-                            <div class="alert alert-info py-2 mb-3" style="font-size: 0.85rem;">
-                                <i class="bi bi-info-circle me-1"></i> System obsługuje <strong>tylko pełne kwoty</strong> (bez groszy).
+                <div class="tab-content" id="walletTabsContent">
+                    <div class="tab-pane fade show active" id="wallet" role="tabpanel" aria-labelledby="wallet-tab">
+                        <div class="row g-4">
+                            <div class="col-md-5">
+                                <div class="card bg-light border-0 shadow-sm p-4 h-100 d-flex justify-content-center align-items-center text-center">
+                                    <small class="text-muted text-uppercase fw-bold">Dostępne środki</small>
+                                    <h2 class="display-6 fw-bold text-success mb-0">
+                                        @Model.Balance.ToString("C2")
+                                    </h2>
+                                </div>
                             </div>
 
-                            <form asp-action="AddFunds" method="post" class="row g-2 mb-3">
-                                @Html.AntiForgeryToken()
-                                <div class="col-8">
-                                    <div class="input-group">
-                                        <input type="number" name="amount" class="form-control"
-                                               placeholder="Kwota" step="1" min="1" required
-                                               oninvalid="this.setCustomValidity('Można wpłacać i wypłacać tylko pełne kwoty (bez groszy).')"
-                                               oninput="this.setCustomValidity('')">
-                                        <span class="input-group-text">zł</span>
+                            <div class="col-md-7">
+                                <div class="card border-0 shadow-sm p-4 h-100">
+                                    <div class="alert alert-info py-2 mb-3" style="font-size: 0.85rem;">
+                                        <i class="bi bi-info-circle me-1"></i> System obsługuje <strong>tylko pełne kwoty</strong> (bez groszy).
                                     </div>
-                                </div>
-                                <div class="col-4">
-                                    <button type="submit" class="btn btn-success w-100">
-                                        <i class="bi bi-plus-circle me-1"></i> Doładuj
-                                    </button>
-                                </div>
-                            </form>
 
-                            <form asp-action="WithdrawFunds" method="post" class="row g-2">
-                                @Html.AntiForgeryToken()
-                                <div class="col-8">
-                                    <div class="input-group">
-                                        <input type="number" name="amount" class="form-control"
-                                               placeholder="Kwota" step="1" min="1" required
-                                               oninvalid="this.setCustomValidity('Można wpłacać i wypłacać tylko pełne kwoty (bez groszy).')"
-                                               oninput="this.setCustomValidity('')">
-                                        <span class="input-group-text">zł</span>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <button type="submit" class="btn btn-outline-danger w-100">
-                                        <i class="bi bi-dash-circle me-1"></i> Wypłać
-                                    </button>
-                                </div>
-                            </form>
+                                    <form asp-action="AddFunds" method="post" class="row g-2 mb-3">
+                                        @Html.AntiForgeryToken()
+                                        <div class="col-8">
+                                            <div class="input-group">
+                                                <input type="number" name="amount" class="form-control"
+                                                       placeholder="Kwota" step="1" min="1" required
+                                                       oninvalid="this.setCustomValidity('Można wpłacać i wypłacać tylko pełne kwoty (bez groszy).')"
+                                                       oninput="this.setCustomValidity('')">
+                                                <span class="input-group-text">zł</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <button type="submit" class="btn btn-success w-100">
+                                                <i class="bi bi-plus-circle me-1"></i> Doładuj
+                                            </button>
+                                        </div>
+                                    </form>
 
+                                    <form asp-action="WithdrawFunds" method="post" class="row g-2">
+                                        @Html.AntiForgeryToken()
+                                        <div class="col-8">
+                                            <div class="input-group">
+                                                <input type="number" name="amount" class="form-control"
+                                                       placeholder="Kwota" step="1" min="1" required
+                                                       oninvalid="this.setCustomValidity('Można wpłacać i wypłacać tylko pełne kwoty (bez groszy).')"
+                                                       oninput="this.setCustomValidity('')">
+                                                <span class="input-group-text">zł</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <button type="submit" class="btn btn-outline-danger w-100">
+                                                <i class="bi bi-dash-circle me-1"></i> Wypłać
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                </div>
+                            </div>
                         </div>
                     </div>
 
+                    <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+                        @if (ViewBag.Transactions == null || !((List<projekt_zespołowy.Models.Transaction>)ViewBag.Transactions).Any())
+                        {
+                            <div class="alert alert-light border text-center py-4 text-muted">
+                                Brak zapisanych transakcji.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group">
+                                @foreach (var t in (List<projekt_zespołowy.Models.Transaction>)ViewBag.Transactions)
+                                {
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="fw-bold">@t.Type.ToString()</div>
+                                            <div class="small text-muted">@t.Description</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold @(t.Type == projekt_zespołowy.Models.TransactionType.Deposit || t.Type == projekt_zespołowy.Models.TransactionType.Earned ? "text-success" : "text-danger")">
+                                                @((t.Type == projekt_zespołowy.Models.TransactionType.Withdrawal || t.Type == projekt_zespołowy.Models.TransactionType.Spent) ? "-" : "+")@t.Amount.ToString("C2")
+                                            </div>
+                                            <div class="small text-muted">@t.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
 

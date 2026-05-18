@@ -1,4 +1,6 @@
-﻿namespace projekt_zespołowy.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace projekt_zespołowy.Models
 {
     public enum RideStatus { Draft, Published, InProgress, Completed, Cancelled}
     public class OfferedRide
@@ -15,8 +17,10 @@
         public ICollection<Waypoint> Waypoints { get; set; }
         public DateTime DepartureTime { get; set; }
         public DateTime? ArrivalTime { get; set; }
+        [Range(1, 8, ErrorMessage = "Liczba miejsc musi być między 1 a 8.")]
         public int SeatsOffered { get; set; }
         public int SeatsTaken { get; set; }
+        [Range(0.0, 1000.0, ErrorMessage = "Cena za przejazd nie może być ujemna.")]
         public decimal PricePerSeat { get; set; }
         public bool IsFlexiblePrice { get; set; } = false;
         public RideStatus Status { get; set; } = RideStatus.Draft;

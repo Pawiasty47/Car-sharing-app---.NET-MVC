@@ -15,6 +15,7 @@ namespace projekt_zespołowy.Models
         public virtual User User { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
+        [Range(0.01, 100000.0, ErrorMessage = "Kwota transakcji musi być większa niż 0.")]
         public decimal Amount { get; set; }
 
         public TransactionType Type { get; set; }

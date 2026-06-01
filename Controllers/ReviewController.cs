@@ -55,5 +55,10 @@ namespace projekt_zespołowy.Controllers
             TempData["SuccessMessage"] = "Opinia usunięta!";
             return RedirectToAction("Index");
         }
+
+        public static void ClearReviews()
+        {
+            _reviews.Clear();
+        }
     }
 }

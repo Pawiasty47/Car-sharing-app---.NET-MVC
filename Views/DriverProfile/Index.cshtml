@@ -173,3 +173,37 @@
         </div>
     </div>
 </div>
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <h4 class="fw-bold mb-3 text-secondary">Historia transakcji</h4>
+
+            @if (ViewBag.Transactions == null || !((List<projekt_zespołowy.Models.Transaction>)ViewBag.Transactions).Any())
+            {
+                <div class="alert alert-light border text-center py-4 text-muted">Brak zapisanych transakcji.</div>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var t in (List<projekt_zespołowy.Models.Transaction>)ViewBag.Transactions)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">@t.Type.ToString()</div>
+                                <div class="small text-muted">@t.Description</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold @(t.Type == projekt_zespołowy.Models.TransactionType.Earned || t.Type == projekt_zespołowy.Models.TransactionType.Deposit ? "text-success" : "text-danger")">
+                                    @((t.Type == projekt_zespołowy.Models.TransactionType.Withdrawal || t.Type == projekt_zespołowy.Models.TransactionType.Spent) ? "-" : "+")@t.Amount.ToString("C2")
+                                </div>
+                                <div class="small text-muted">@t.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
